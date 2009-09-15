@@ -1,0 +1,91 @@
+#### Start of system configuration section. ####
+
+# Output variables of the 'configure' script:
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+top_srcdir = @top_srcdir@
+srcdir = @srcdir@
+VPATH = @srcdir@
+DEFS = @DEFS@
+INSTALL = @INSTALL@
+SHELL = @SHPROG@
+RM = @RMPROG@
+AWK = @AWK@
+LN_S = @LN_S@
+MV = mv
+CHMOD = chmod
+CHOWN = chown
+CHGRP = chgrp
+MKDIR = mkdir
+TOUCH = touch
+GREP = grep
+@SET_MAKE@
+
+BINDIR = @bindir@
+DPATH = @DPATH@
+IRCMODE = @IRCMODE@
+IRCOWN = @IRCOWN@
+IRCGRP = @IRCGRP@
+
+CC = @CC@
+CFLAGS = @CFLAGS@
+CPPFLAGS = -I. -I.. @CPPFLAGS@
+LDFLAGS = @LDFLAGS@ -lssl
+LIBS = @LIBS@
+
+#### End of system configuration section. ####
+
+IRCGW_SRC = \
+	gw_client.c \
+	gw_common.c \
+	gw_config.c \
+	gw_listener.c \
+	gw_log.c \
+	gw_sockets.c \
+	gw_ssl.c \
+	gw_string.c \
+	gw_webirc.c \
+	main.c
+
+SRC = ${IRCGW_SRC}
+
+OBJS = ${SRC:%.c=%.o}
+
+DEP_SRC = ${IRCGW_SRC}
+
+all:
+	( cd ..; make -f Makefile )
+
+.SUFFIXES: .c .o
+
+.c.o:
+	${CC} ${CFLAGS} ${CPPFLAGS} -c $< -o $@
+
+mkbindir:
+	@test -d ${BINDIR} || mkdir ${BINDIR}
+
+build: ircgw
+
+ircgw:  ${OBJS}
+	${CC} ${CFLAGS} ${LDFLAGS} ${OBJS} ${LDFLAGS} ${LIBS} -o ircgw
+
+install: build mkbindir
+	@if [ ! -d ${DPATH} -a ! -f ${DPATH} ]; then \
+	  echo "Creating directory ${DPATH}"; \
+	  ${MKDIR} ${DPATH}; \
+	  ${CHMOD} 700 ${DPATH}; \
+	fi
+	@echo "Installing new ircgw as ${BINDIR}/ircgw :"
+	${INSTALL} -m ${IRCMODE} -o ${IRCOWN} -g ${IRCGRP} ircgw ${BINDIR}/ircgw
+	${INSTALL} -m 600 -o ${IRCOWN} -g ${IRCGRP} ${top_srcdir}/doc/ircgw.example.conf ${DPATH}
+	${top_srcdir}/tools/gencert ${DPATH} ${top_srcdir}
+
+clean:
+	${RM} -f *.o *.bak ircgw
+
+distclean: clean
+	${RM} -f Makefile stamp-m
+
+maintainer-clean: distclean
+

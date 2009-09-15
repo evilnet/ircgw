@@ -1,0 +1,39 @@
+#! /bin/sh
+#* $Id:$
+
+
+case $# in
+0|1)      echo 'Usage: gencert /dpath /top_srcdir' 1>&2; exit 2
+esac
+
+if test -f /tmp/ssltempdata
+then
+  rm -f /tmp/ssltempdata
+else
+  echo 'Generating ircgw.cer...'
+
+  if test -f $1/ircgw.cer
+  then
+    echo 'ircgw.cer already exists, exiting. Remove ircgw.cer and run make install again to create a new one'
+    exit 0;
+  fi
+
+  echo Press Y if you want to use an SSL certificate that already exists; read sslans
+
+  if [ "$sslans" != "Y" ]; then
+     openssl req -new -x509 -nodes -out $1/ircgw.cer -keyout $1/ircgw.key
+  else
+    FileExist=FALSE
+    while [ "$FileExist" == "FALSE" ];
+    do
+      echo Please enter in the filname of the SSL certificate including the full path; read sslpath
+      if test -f $sslpath
+      then
+        FileExist=TRUE
+      else
+        echo File Does Not Exist
+      fi
+    done
+    cp $sslpath $1/ircgw.cer
+  fi
+fi

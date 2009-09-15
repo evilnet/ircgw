@@ -1,0 +1,86 @@
+#### Start of system configuration section. ####
+prefix = @prefix@
+srcdir = @srcdir@
+
+SHELL = @SHPROG@
+RM = @RMPROG@
+AWK = @AWK@
+@SET_MAKE@
+#### End of system configuration section. ####
+
+SUBDIRS = src
+IPGW_MAKEFILES = Makefile src/Makefile
+
+all: build
+
+build: ${IPGW_MAKEFILES}
+	@for i in ${SUBDIRS}; do \
+		echo "Building $$i..."; \
+		cd $$i; ${MAKE} build; cd ..; \
+	done
+
+root-clean:
+	@for i in '*.orig' '.*.orig' '\#*' '*~' '.*~' '*.bak' '.*.bak' core; do\
+		echo "Removing $$i"; \
+		REMOVE_FILES="`find . -name "$$i" -print`"; \
+		test -n "$$REMOVE_FILES" && ${RM} -f $$REMOVE_FILES; \
+	done || true
+
+sub-clean: ${IPGW_MAKEFILES}
+	@for i in ${SUBDIRS}; do \
+		echo "Cleaning $$i..."; \
+		cd $$i; ${MAKE} clean; cd ..;\
+	done
+
+clean: root-clean sub-clean
+
+root-distclean: root-clean
+	@for i in '*.rej'; do \
+		echo "Removing $$i"; \
+		REMOVE_FILES="`find . -name "$$i" -print`"; \
+		test -n "$$REMOVE_FILES" && ${RM} -f $$REMOVE_FILES; \
+	done || true
+
+sub-distclean: ${IPGW_MAKEFILES}
+	@for i in ${SUBDIRS}; do \
+		echo "Dist-cleaning $$i..."; \
+		cd $$i; ${MAKE} distclean; cd ..;\
+	done
+
+distclean: root-distclean sub-distclean
+	${RM} -f Makefile config.h config.log config.cache config.status stamp-h
+
+install: ${IPGW_MAKEFILES}
+	test -d ${prefix} || mkdir ${prefix}
+	@for i in ${SUBDIRS}; do \
+		echo "Installing $$i..."; \
+		cd $$i; ${MAKE} install; cd ..; \
+	done
+
+${srcdir}/aclocal.m4: acinclude.m4
+	cd ${srcdir} && aclocal
+
+${srcdir}/configure: configure.in aclocal.m4
+	cd ${srcdir} && autoconf
+
+# autoheader might not change config.h.in, so touch a stamp file.
+${srcdir}/config.h.in: stamp-h.in
+${srcdir}/stamp-h.in: configure.in aclocal.m4 acconfig.h
+	cd ${srcdir} && autoheader
+	cho timestamp > ${srcdir}/stamp-h.in
+
+config.h: stamp-h
+stamp-h: config.h.in config.status
+	./config.status
+
+Makefile: Makefile.in config.status
+	./config.status
+
+doc/Makefile: doc/Makefile.in config.status
+	./config.status
+
+src/Makefile: src/Makefile.in config.status
+	./config.status
+
+config.status: configure
+	./config.status --recheck
