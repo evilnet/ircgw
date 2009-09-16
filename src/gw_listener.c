@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with IRCGW.  If not, see <http://www.gnu.org/licenses/>.
  *
- * $Id:$
+ * $Id$
  */
 #include "gw_listener.h"
 
@@ -225,12 +225,22 @@ void listener_parseflags(struct Listener *l, char *flags) {
 				LstSetWebIRCv6(l);
 				break;
 			}
+			case 'R':
+			case 'r': {
+				LstSetNoRDNS(l);
+				break;
+			}
+			case 'H':
+			case 'h': {
+				LstSetNoSuffix(l);
+				break;
+			}
 		}
 	}
 }
 
 char* listener_flags(struct Listener *l) {
-	char *flags = strdup("---");
+	char *flags = strdup("-----");
 
 	if (LstIsSSL(l))
 		flags[0] = 'S';
@@ -238,7 +248,11 @@ char* listener_flags(struct Listener *l) {
 		flags[1] = 'W';
 	if (LstIsWebIRCv6(l))
 		flags[2] = '6';
-	flags[4] = '\0';
+	if (LstIsNoRDNS(l))
+		flags[3] = 'R';
+	if (LstIsNoSuffix(l))
+		flags[4] = 'H';
+	flags[5] = '\0';
 
 	return flags;
 }

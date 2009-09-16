@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with IRCGW.  If not, see <http://www.gnu.org/licenses/>.
  *
- * $Id:$
+ * $Id$
  */
 #include "gw_webirc.h"
 
@@ -85,7 +85,7 @@ char* getwebircmsg(struct Client *cli) {
 	assert(cli != NULL);
 	assert(cli->listener != NULL);
 	char *msg, *ip, *ipexp;
-	char *ip6, *host, *hostpart;
+	char *ip6, *host, *hostpart = NULL;
 	char result[IPADDRMAXLEN];
 	int i = 0, hostmalloc = 0;
 	unsigned char hash1[16], hash2[16], hash3[16];
@@ -96,19 +96,19 @@ char* getwebircmsg(struct Client *cli) {
 
 	if (IsIP6(cli->lsock)) {
 		ip6 = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr6, result, IPADDRMAXLEN);
+		if (!LstIsNoRDNS(cli->listener))
+			hostpart = get_rdns6(cli->lsock->addr6);
 		if (LstIsWebIRCv6(cli->listener)) {
 			ip = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr6, result, IPADDRMAXLEN);
-			hostpart = get_rdns6(cli->lsock->addr6);
 			if (hostpart == NULL)
-				host = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr6, result, IPADDRMAXLEN);
-			else {
-				if (cli->listener->wircsuff) {
-					hostmalloc = 1;
-					host = malloc(HOSTMAXLEN);
-					sprintf(host, "%s.%s", hostpart, cli->listener->wircsuff);
-				} else
-					host = hostpart;
-			}
+				hostpart = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr6, result, IPADDRMAXLEN);
+
+			if (cli->listener->wircsuff) {
+				hostmalloc = 1;
+				host = malloc(HOSTMAXLEN);
+				sprintf(host, "%s.%s", hostpart, cli->listener->wircsuff);
+			} else
+				host = hostpart;
 		} else {
 			MD5_Init(&ctx1);
 			for (i=0; i<8; i++) {
@@ -131,38 +131,34 @@ char* getwebircmsg(struct Client *cli) {
 			ip = malloc(15);
 			sprintf(ip, "0.%d.%d.%d", hash1[3], hash2[7], hash3[11]);
 
-			hostpart = get_rdns6(cli->lsock->addr6);
-
 			if (hostpart == NULL) {
 				ipexp = malloc(IPEXPMAXLEN);
 				ipexp = expandaddr6(&cli->lsock->addr6);
 
-				if (cli->listener->wircsuff) {
-					hostpart = malloc(HOSTMAXLEN);
-					hostpart = gw_strrev(ipexp);
-					hostmalloc = 1;
-					host = malloc(HOSTMAXLEN);
-					sprintf(host, "%s.%s", hostpart, cli->listener->wircsuff);
-					free(hostpart);
-				} else
-					host = gw_strrev(ipexp);
-
-				free(ipexp);
-			} else {
-				if (cli->listener->wircsuff) {
-					hostmalloc = 1;
-					host = malloc(HOSTMAXLEN);
-					sprintf(host, "%s.%s", hostpart, cli->listener->wircsuff);
-				} else
-					host = hostpart;
+				hostpart = gw_strrev(ipexp);
 			}
+
+			if (cli->listener->wircsuff && !LstIsNoSuffix(cli->listener)) {
+				hostmalloc = 1;
+				host = malloc(HOSTMAXLEN);
+				sprintf(host, "%s.%s", hostpart, cli->listener->wircsuff);
+			} else
+				host = hostpart;
 		}
 	} else {
 		ip6 = NULL;
 		ip = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr, result, IPADDRMAXLEN);
-		host = get_rdns(cli->lsock->addr);
-		if (host == NULL)
-			host = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr, result, IPADDRMAXLEN);
+		if (!LstIsNoRDNS(cli->listener))
+			hostpart = get_rdns(cli->lsock->addr);
+		if (hostpart == NULL)
+			hostpart = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr, result, IPADDRMAXLEN);
+
+		if (cli->listener->wircsuff && !LstIsNoSuffix(cli->listener)) {
+			hostmalloc = 1;
+			host = malloc(HOSTMAXLEN);
+			sprintf(host, "%s.%s", hostpart, cli->listener->wircsuff);
+		} else
+			host = hostpart;
 	}
 
 	msg = malloc(IRCMSGMAXLEN);

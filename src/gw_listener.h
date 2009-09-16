@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with IRCGW.  If not, see <http://www.gnu.org/licenses/>.
  *
- * $Id:$
+ * $Id$
  */
 #ifndef GW_LISTENER_H
 #define GW_LISTENER_H
@@ -32,6 +32,8 @@
 #define LFLAG_SSL	0x00000010
 #define LFLAG_WEBIRC	0x00000020
 #define LFLAG_WEBIRCV6	0x00000040
+#define	LFLAG_NORDNS	0x00000080
+#define LFLAG_NOSUFFIX	0x00000100
 
 #define	LstIsAdded(l)		HasFlag(l, LFLAG_ADDED)
 #define LstIsBound(l)   	HasFlag(l, LFLAG_BOUND)
@@ -40,6 +42,8 @@
 #define LstIsSSL(l)		((TLstIsSSL(l) && sslenabled) ? 1 : 0)
 #define LstIsWebIRC(l)		HasFlag(l, LFLAG_WEBIRC)
 #define LstIsWebIRCv6(l)	HasFlag(l, LFLAG_WEBIRCV6)
+#define LstIsNoRDNS(l)		HasFlag(l, LFLAG_NORDNS)
+#define LstIsNoSuffix(l)	HasFlag(l, LFLAG_NOSUFFIX)
 
 #define LstSetAdded(l)		SetFlag(l, LFLAG_ADDED)
 #define LstSetBound(l)  	SetFlag(l, LFLAG_BOUND)
@@ -47,6 +51,8 @@
 #define LstSetSSL(l)		SetFlag(l, LFLAG_SSL)
 #define LstSetWebIRC(l)		SetFlag(l, LFLAG_WEBIRC)
 #define LstSetWebIRCv6(l)	SetFlag(l, LFLAG_WEBIRCV6)
+#define LstSetNoRDNS(l)		SetFlag(l, LFLAG_NORDNS)
+#define LstSetNoSuffix(l)	SetFlag(l, LFLAG_NOSUFFIX)
 
 #define LstClrAdded(l)		ClrFlag(l, LFLAG_ADDED)
 #define LstClrBound(l)  	ClrFlag(l, LFLAG_BOUND)
@@ -54,6 +60,8 @@
 #define LstClrSSL(l)		ClrFlag(l, LFLAG_SSL)
 #define LstClrWebIRC(l)		ClrFlag(l, LFLAG_WEBIRC)
 #define LstClrWebIRCv6(l)	ClrFlag(l, LFLAG_WEBIRCV6)
+#define LstClrNoRDNS(l)		ClrFlag(l, LFLAG_NORDNS)
+#define LstClrNoSuffix(l)	ClrFlag(l, LFLAG_NOSUFFIX)
 
 struct Listener *listeners;
 
