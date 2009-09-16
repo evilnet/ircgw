@@ -235,12 +235,17 @@ void listener_parseflags(struct Listener *l, char *flags) {
 				LstSetNoSuffix(l);
 				break;
 			}
+			case 'N':
+			case 'n': {
+				LstSetRDNSNoSuffix(l);
+				break;
+			}
 		}
 	}
 }
 
 char* listener_flags(struct Listener *l) {
-	char *flags = strdup("-----");
+	char *flags = strdup("------");
 
 	if (LstIsSSL(l))
 		flags[0] = 'S';
@@ -252,7 +257,9 @@ char* listener_flags(struct Listener *l) {
 		flags[3] = 'R';
 	if (LstIsNoSuffix(l))
 		flags[4] = 'H';
-	flags[5] = '\0';
+	if (LstIsRDNSNoSuffix(l))
+		flags[5] = 'N';
+	flags[6] = '\0';
 
 	return flags;
 }
