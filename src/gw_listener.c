@@ -167,17 +167,18 @@ int listener_setremhost(struct Listener *l, char *raddr) {
 
 int listener_checkfd(struct Listener *l) {
 	int fd = l->sock->fd;
-	char *ip;
+	char *ip, *lip;
 	char result[IPADDRMAXLEN];
 	struct Client *cli;
 
-	if (IsIP6(l->sock))
-		ip = (char *)inet_ntop(l->sock->af, &l->sock->addr6, result, IPADDRMAXLEN);
-	else
-		ip = (char *)inet_ntop(l->sock->af, &l->sock->addr, result, IPADDRMAXLEN);
-
 	if (FD_ISSET(fd, &fds)) {
-		alog(LOG_DEBUG, "Incoming connection on [%s]:%d", ip, l->sock->port);
+		if (IsIP6(l->sock))
+			ip = (char *)inet_ntop(l->sock->af, &l->sock->addr6, result, IPADDRMAXLEN);
+		else
+			ip = (char *)inet_ntop(l->sock->af, &l->sock->addr, result, IPADDRMAXLEN);
+		lip = strdup(ip);
+
+		alog(LOG_DEBUG, "Incoming connection on [%s]:%d", lip, l->sock->port);
 		cli = socket_accept(l);
 
 		if (cli == NULL)
@@ -188,7 +189,7 @@ int listener_checkfd(struct Listener *l) {
 		else
 			ip = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr, result, IPADDRMAXLEN);
 
-		alog(LOG_NORM, "Accepted new client from [%s]:%d", ip, cli->lsock->port);
+		alog(LOG_NORM, "Accepted new client from [%s]:%d on [%s]:%d", ip, cli->lsock->port, lip, l->sock->port);
 
 		if (!socket_connect(cli))
 			return 0;
@@ -199,6 +200,8 @@ int listener_checkfd(struct Listener *l) {
 			ip = (char *)inet_ntop(l->remaf, &l->remaddr, result, IPADDRMAXLEN);
 
 		alog(LOG_DEBUG, "Connected to remote host [%s]:%d", ip, l->remport);
+
+		free(lip);
 
 		return 1;
 	}
@@ -247,18 +250,18 @@ void listener_parseflags(struct Listener *l, char *flags) {
 char* listener_flags(struct Listener *l) {
 	char *flags = strdup("------");
 
-	if (LstIsSSL(l))
-		flags[0] = 'S';
-	if (LstIsWebIRC(l))
-		flags[1] = 'W';
-	if (LstIsWebIRCv6(l))
-		flags[2] = '6';
-	if (LstIsNoRDNS(l))
-		flags[3] = 'R';
 	if (LstIsNoSuffix(l))
-		flags[4] = 'H';
+		flags[0] = 'H';
 	if (LstIsRDNSNoSuffix(l))
-		flags[5] = 'N';
+		flags[1] = 'N';
+	if (LstIsNoRDNS(l))
+		flags[2] = 'R';
+	if (LstIsSSL(l))
+		flags[3] = 'S';
+	if (LstIsWebIRC(l))
+		flags[4] = 'W';
+	if (LstIsWebIRCv6(l))
+		flags[5] = '6';
 	flags[6] = '\0';
 
 	return flags;
