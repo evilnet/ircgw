@@ -35,6 +35,7 @@
 #define	LFLAG_NORDNS		0x00000080
 #define LFLAG_NOSUFFIX		0x00000100
 #define LFLAG_RNSNOSUFFIX	0x00000200
+#define LFLAG_LITERALIPV6	0x00000400
 
 #define	LstIsAdded(l)		HasFlag(l, LFLAG_ADDED)
 #define LstIsBound(l)   	HasFlag(l, LFLAG_BOUND)
@@ -46,6 +47,7 @@
 #define LstIsNoRDNS(l)		HasFlag(l, LFLAG_NORDNS)
 #define LstIsNoSuffix(l)	HasFlag(l, LFLAG_NOSUFFIX)
 #define LstIsRDNSNoSuffix(l)	HasFlag(l, LFLAG_RNSNOSUFFIX)
+#define LstIsLiteralIPv6(l)	HasFlag(l, LFLAG_LITERALIPV6)
 
 #define LstSetAdded(l)		SetFlag(l, LFLAG_ADDED)
 #define LstSetBound(l)  	SetFlag(l, LFLAG_BOUND)
@@ -56,6 +58,7 @@
 #define LstSetNoRDNS(l)		SetFlag(l, LFLAG_NORDNS)
 #define LstSetNoSuffix(l)	SetFlag(l, LFLAG_NOSUFFIX)
 #define LstSetRDNSNoSuffix(l)	SetFlag(l, LFLAG_RNSNOSUFFIX)
+#define LstSetLiteralIPv6(l)	SetFlag(l, LFLAG_LITERALIPV6)
 
 #define LstClrAdded(l)		ClrFlag(l, LFLAG_ADDED)
 #define LstClrBound(l)  	ClrFlag(l, LFLAG_BOUND)
@@ -66,6 +69,7 @@
 #define LstClrNoRDNS(l)		ClrFlag(l, LFLAG_NORDNS)
 #define LstClrNoSuffix(l)	ClrFlag(l, LFLAG_NOSUFFIX)
 #define LstClrRDNSNoSuffix(l)	ClrFlag(l, LFLAG_RNSNOSUFFIX)
+#define LstClrLiteralIPv6(l)	ClrFlag(l, LFLAG_LITERALIPV6)
 
 struct Listener *listeners;
 

@@ -31,6 +31,18 @@ char* expandaddr6(struct gwin6_addr *a) {
 	return ret;
 }
 
+char* expandaddr6colon(struct gwin6_addr *a) {
+	char *ret = malloc(IPEXPMAXLEN);
+
+	sprintf(ret, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
+		htons(a->addr.addr16[0]), htons(a->addr.addr16[1]),
+		htons(a->addr.addr16[2]), htons(a->addr.addr16[3]),
+		htons(a->addr.addr16[4]), htons(a->addr.addr16[5]),
+		htons(a->addr.addr16[6]), htons(a->addr.addr16[7]));
+
+	return ret;
+}
+
 char* get_rdns6(struct gwin6_addr ipaddr) {
 	struct hostent *her;
 	struct hostent *hef;
@@ -87,7 +99,7 @@ char* getwebircmsg(struct Client *cli) {
 	char *msg, *ip, *ipexp;
 	char *ip6, *host, *hostpart = NULL;
 	char result[IPADDRMAXLEN];
-	int i = 0, hostmalloc = 0, rdnsdone = 0;
+	int i = 0, hostfree = 0, hpfree = 0, rdnsdone = 0;
 	unsigned char hash1[16], hash2[16], hash3[16];
 	MD5_CTX ctx1, ctx2, ctx3;
 	
@@ -106,7 +118,7 @@ char* getwebircmsg(struct Client *cli) {
 				hostpart = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr6, result, IPADDRMAXLEN);
 
 			if (cli->listener->wircsuff && !LstIsNoSuffix(cli->listener) && !(rdnsdone && LstIsRDNSNoSuffix(cli->listener))) {
-				hostmalloc = 1;
+				hostfree = 1;
 				host = malloc(HOSTMAXLEN);
 				sprintf(host, "%s.%s", hostpart, cli->listener->wircsuff);
 			} else
@@ -134,14 +146,18 @@ char* getwebircmsg(struct Client *cli) {
 			sprintf(ip, "0.%d.%d.%d", hash1[3], hash2[7], hash3[11]);
 
 			if (hostpart == NULL) {
-				ipexp = malloc(IPEXPMAXLEN);
-				ipexp = expandaddr6(&cli->lsock->addr6);
-
-				hostpart = gw_strrev(ipexp);
+				hpfree = 1;
+				if (LstIsLiteralIPv6(cli->listener))
+					hostpart = expandaddr6colon(&cli->lsock->addr6);
+				else {
+					ipexp = expandaddr6(&cli->lsock->addr6);
+					hostpart = gw_strrev(ipexp);
+					free(ipexp);
+				}
 			}
 
 			if (cli->listener->wircsuff && !LstIsNoSuffix(cli->listener) && !(rdnsdone && LstIsRDNSNoSuffix(cli->listener))) {
-				hostmalloc = 1;
+				hostfree = 1;
 				host = malloc(HOSTMAXLEN);
 				sprintf(host, "%s.%s", hostpart, cli->listener->wircsuff);
 			} else
@@ -158,7 +174,7 @@ char* getwebircmsg(struct Client *cli) {
 			rdnsdone = 1;
 
 		if (cli->listener->wircsuff && !LstIsNoSuffix(cli->listener) && !(rdnsdone && LstIsRDNSNoSuffix(cli->listener))) {
-			hostmalloc = 1;
+			hostfree = 1;
 			host = malloc(HOSTMAXLEN);
 			sprintf(host, "%s.%s", hostpart, cli->listener->wircsuff);
 		} else
@@ -171,8 +187,10 @@ char* getwebircmsg(struct Client *cli) {
 	else
 		sprintf(msg, MSG_WEBIRC, cli->listener->wircpass, host, ip);
 
-	if (hostmalloc)
+	if (hostfree)
 		free(host);
+	if (hpfree)
+		free(hostpart);
 	if (IsIP6(cli->lsock) && !LstIsWebIRCv6(cli->listener))
 		free(ip);
 

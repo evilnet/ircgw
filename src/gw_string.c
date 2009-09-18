@@ -17,23 +17,9 @@
  * You should have received a copy of the GNU General Public License
  * along with IRCGW.  If not, see <http://www.gnu.org/licenses/>.
  *
- * $Id:$
+ * $Id$
  */
 #include "gw_string.h"
-
-char* gw_strstripnl(char *in) {
-	char *ret = strdup(in);
-	int i = 0;
-
-	for (i=0; i<strlen(ret); i++) {
-		if ((ret[i] == '\r') || (ret[i] == '\n')) {
-			ret[i] = '\0';
-			break;
-		}
-	}
-
-	return ret;
-}
 
 char* gw_strrev(char *in) {
 	char *ret = strdup(in);

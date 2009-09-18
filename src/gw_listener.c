@@ -243,26 +243,33 @@ void listener_parseflags(struct Listener *l, char *flags) {
 				LstSetRDNSNoSuffix(l);
 				break;
 			}
+			case 'L':
+			case 'l': {
+				LstSetLiteralIPv6(l);
+				break;
+			}
 		}
 	}
 }
 
 char* listener_flags(struct Listener *l) {
-	char *flags = strdup("------");
+	char *flags = strdup("-------");
 
 	if (LstIsNoSuffix(l))
 		flags[0] = 'H';
+	if (LstIsLiteralIPv6(l))
+		flags[1] = 'L';
 	if (LstIsRDNSNoSuffix(l))
-		flags[1] = 'N';
+		flags[2] = 'N';
 	if (LstIsNoRDNS(l))
-		flags[2] = 'R';
+		flags[3] = 'R';
 	if (LstIsSSL(l))
-		flags[3] = 'S';
+		flags[4] = 'S';
 	if (LstIsWebIRC(l))
-		flags[4] = 'W';
+		flags[5] = 'W';
 	if (LstIsWebIRCv6(l))
-		flags[5] = '6';
-	flags[6] = '\0';
+		flags[6] = '6';
+	flags[7] = '\0';
 
 	return flags;
 }

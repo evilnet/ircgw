@@ -17,14 +17,13 @@
  * You should have received a copy of the GNU General Public License
  * along with IRCGW.  If not, see <http://www.gnu.org/licenses/>.
  *
- * $Id:$
+ * $Id$
  */
 #ifndef GW_STRING_H
 #define GW_STRING_H
 
 #include "gw_common.h"
 
-char* gw_strstripnl(char *in);
 char* gw_strrev(char *in);
 
 #endif

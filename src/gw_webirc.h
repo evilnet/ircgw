@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with IRCGW.  If not, see <http://www.gnu.org/licenses/>.
  *
- * $Id:$
+ * $Id$
  */
 #ifndef GW_WEBIRC_H
 #define GW_WEBIRC_H
@@ -29,6 +29,7 @@
 #define MSG_WEBIRC_EXT	"WEBIRC %s ircgw %s %s :%s\r\n"
 
 char* expandaddr6(struct gwin6_addr *a);
+char* expandaddr6colon(struct gwin6_addr *a);
 char* get_rdns6(struct gwin6_addr ipaddr);
 char* get_rdns(struct gwin_addr ipaddr);
 char* getwebircmsg(struct Client *cli);
