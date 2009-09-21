@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with IRCGW.  If not, see <http://www.gnu.org/licenses/>.
  *
- * $Id:$
+ * $Id$
  */
 #include "gw_client.h"
 
@@ -99,7 +99,7 @@ int client_checkfd(struct Client *c) {
 			alog(LOG_DEBUG, "Sockets: %d", sockets_count());
 			return 0;
 		} else {
-			if (strstr(buf, "NICK ") && !CliIsWebIRCSent(c)) {
+			if (!CliIsWebIRCSent(c)) {
 				CliSetWebIRCSent(c);
 				wirc = getwebircmsg(c);
 				if (wirc != NULL) {
