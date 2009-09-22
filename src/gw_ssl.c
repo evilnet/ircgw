@@ -17,14 +17,14 @@
  * You should have received a copy of the GNU General Public License
  * along with IRCGW.  If not, see <http://www.gnu.org/licenses/>.
  *
- * $Id:$
+ * $Id$
  */
 #include "gw_ssl.h"
 
 void gw_ssl_init() {
-	sslenabled = 1;
-
 	SSL_METHOD *meth;
+
+	sslenabled = 1;
 
 	SSL_library_init();
 	SSL_load_error_strings();

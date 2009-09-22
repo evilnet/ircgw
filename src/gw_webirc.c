@@ -94,14 +94,15 @@ char* get_rdns(struct gwin_addr ipaddr) {
 }
 
 char* getwebircmsg(struct Client *cli) {
-	assert(cli != NULL);
-	assert(cli->listener != NULL);
 	char *msg, *ip, *ipexp;
 	char *ip6, *host, *hostpart = NULL;
 	char result[IPADDRMAXLEN];
 	int i = 0, hostfree = 0, hpfree = 0, rdnsdone = 0;
 	unsigned char hash1[16], hash2[16], hash3[16];
 	MD5_CTX ctx1, ctx2, ctx3;
+
+	assert(cli != NULL);
+	assert(cli->listener != NULL);
 	
 	if (!cli->listener->wircpass || !LstIsWebIRC(cli->listener))
 		return NULL;

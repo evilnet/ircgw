@@ -17,11 +17,14 @@
  * You should have received a copy of the GNU General Public License
  * along with IRCGW.  If not, see <http://www.gnu.org/licenses/>.
  *
- * $Id:$
+ * $Id$
  */
 #include "main.h"
 
 int main(int argc, char *argv[]) {
+	int ch;
+	pid_t npid;
+
 	signal(SIGINT, sigterm_handle);
 	signal(SIGTERM, sigterm_handle);
 	signal(SIGHUP, sighup_handle);
@@ -31,8 +34,6 @@ int main(int argc, char *argv[]) {
 	config_set(CONF_SSLCERT, DEFCERT);
 	config_set(CONF_SSLKEY, DEFKEY);
 	config_set(CONF_PIDFILE, DEFPID);
-
-	int ch;
 
 	while ((ch = getopt(argc, argv, "df:n")) != -1) {
 		switch (ch) {
@@ -58,7 +59,6 @@ int main(int argc, char *argv[]) {
 
 	config_load();
 
-	pid_t npid;
 	if (!nofork && (npid = fork())) {
 		printf("Forking into the background as pid %d\n", (int)npid);
 		exit(0);
@@ -87,13 +87,12 @@ int main(int argc, char *argv[]) {
 int print_listener (struct Listener* l) {
 	char *ip;
 	char result[IPADDRMAXLEN];
+	char *flags = listener_flags(l);
 
 	if (IsIP6(l->sock)) {
 		ip = (char *)inet_ntop(l->sock->af, &l->sock->addr6, result, IPADDRMAXLEN);
 	} else
 		ip = (char *)inet_ntop(l->sock->af, &l->sock->addr, result, IPADDRMAXLEN);
-
-	char *flags = listener_flags(l);
 
 	alog(LOG_NORM, "Listener: [%s]:%d (Flags: %s)", ip, l->sock->port, flags);
 

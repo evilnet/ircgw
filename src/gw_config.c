@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with IRCGW.  If not, see <http://www.gnu.org/licenses/>.
  *
- * $Id:$
+ * $Id$
  */
 #include "gw_config.h"
 
@@ -25,7 +25,6 @@ void config_load() {
 	FILE* configFd;
 	char tempBuf[1024];
 	char *line;
-	char *filep;
 
 	int bindc = 0;
 	int delc = 0;

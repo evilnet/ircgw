@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with IRCGW.  If not, see <http://www.gnu.org/licenses/>.
  *
- * $Id:$
+ * $Id$
  */
 #ifndef GW_COMMON_H
 #define GW_COMMON_H
@@ -76,34 +76,34 @@ struct gwin_addr {
 struct Socket {
 	struct Socket *next;
 	struct Socket *prev;
-	struct gwin6_addr addr6;	// IPv6 address
-	struct gwin_addr addr;		// IPv4 address
-	int port;			// Local Port
-	int af;				// AF_INET or AF_INET6
-	int fd;				// File descriptor
-	SSL *ssl;			// SSL connection
+	struct gwin6_addr addr6;	/* IPv6 address */
+	struct gwin_addr addr;		/* IPv4 address */
+	int port;			/* Local Port */
+	int af;				/* AF_INET or AF_INET6 */
+	int fd;				/* File descriptor */
+	SSL *ssl;			/* SSL connection */
 };
 
 struct Listener {
 	struct Listener *next;
 	struct Listener *prev;
-	struct Socket *sock;		// Socket associated with Listener
-	struct gwin6_addr remaddr6;	// Remote IPv6 address
-	struct gwin_addr remaddr;	// Remote IPv4 address
-	int remport;			// Remote Port
-	int remaf;			// Remote: AF_INET or AF_INET6
-	int flags;			// Listener flags (Added, Bound, Gagged)
-	int clients;			// Current client count
-	char *wircpass;			// WEBIRC Password
-	char *wircsuff;			// WEBIRC Host Suffix
+	struct Socket *sock;		/* Socket associated with Listener */
+	struct gwin6_addr remaddr6;	/* Remote IPv6 address */
+	struct gwin_addr remaddr;	/* Remote IPv4 address */
+	int remport;			/* Remote Port */
+	int remaf;			/* Remote: AF_INET or AF_INET6 */
+	int flags;			/* Listener flags (Added, Bound, Gagged) */
+	int clients;			/* Current client count */
+	char *wircpass;			/* WEBIRC Password */
+	char *wircsuff;			/* WEBIRC Host Suffix */
 };
 
 struct Client {
 	struct Client *next;
 	struct Client *prev;
-	struct Socket *lsock;		// Local (Inbound) Socket
-	struct Socket *rsock;		// Remote (Outbound) Socket
-	struct Listener *listener;	// Listener Connected To
+	struct Socket *lsock;		/* Local (Inbound) Socket */
+	struct Socket *rsock;		/* Remote (Outbound) Socket */
+	struct Listener *listener;	/* Listener Connected To */
 	int flags;
 };
 
