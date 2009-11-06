@@ -36,8 +36,10 @@ char* gw_ssl_get_hash(SSL *ssl) {
 
 	if (!X509_digest(cert, digest, md, &n)) {
 		alog(LOG_DEBUG, "Unable to digest SSL certificate");
+		X509_free(cert);
 		return strdup("");
 	} else {
+		X509_free(cert);
 		return strdup(md);
 	}
 }
