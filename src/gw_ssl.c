@@ -21,6 +21,31 @@
  */
 #include "gw_ssl.h"
 
+char* gw_ssl_get_hash(SSL *ssl) {
+	X509* cert;
+	unsigned int n = 0;
+	unsigned char md[EVP_MAX_MD_SIZE];
+	const EVP_MD *digest = EVP_sha1();
+
+	cert = SSL_get_peer_certificate(ssl);
+
+	if (!(cert)) {
+		alog(LOG_DEBUG, "No client certificate provided");
+		return strdup("");
+	}
+
+	if (!X509_digest(cert, digest, md, &n)) {
+		alog(LOG_DEBUG, "Unable to digest SSL certificate");
+		return strdup("");
+	} else {
+		return strdup(md);
+	}
+}
+
+int gw_ssl_verify(int preverify_ok, X509_STORE_CTX *cert) {
+	return 1;
+}
+
 void gw_ssl_init() {
 	SSL_METHOD *meth;
 
@@ -41,6 +66,8 @@ void gw_ssl_init() {
 		alog(LOG_ERROR, "Unable to load SSL key file, disabling SSL");
 		sslenabled = 0;
 	}
+
+	SSL_CTX_set_verify(gw_sslctx, SSL_VERIFY_PEER, gw_ssl_verify);
 }
 
 void gw_ssl_deinit() {
@@ -67,6 +94,7 @@ SSL* gw_ssl_connect(int fd) {
 
 SSL* gw_ssl_accept(int fd) {
 	SSL *ssl;
+	char *h;
 
 	if (sslenabled) {
 		ssl=SSL_new(gw_sslctx);
@@ -76,6 +104,11 @@ SSL* gw_ssl_accept(int fd) {
 			return NULL;
 		}
 		alog(LOG_DEBUG, "Ssl: new()");
+
+		h = gw_ssl_get_hash(ssl);
+		alog(LOG_DEBUG, "Client certificate SHA1: %s", gw_strhex(h, 20));
+		free(h);
+
 		return ssl;
 	} else {
 		return NULL;

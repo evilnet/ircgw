@@ -25,5 +25,6 @@
 #include "gw_common.h"
 
 char* gw_strrev(char *in);
+char* gw_strhex(const unsigned char *raw, size_t rawsz);
 
 #endif

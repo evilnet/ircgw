@@ -34,3 +34,17 @@ char* gw_strrev(char *in) {
 	return ret;
 }
 
+char* gw_strhex(const unsigned char *raw, size_t rawsz) {
+        const char *hex = "0123456789abcdef";
+        static char hexbuf[514];
+        size_t i, j;
+
+        for (i = 0, j = 0; j < rawsz; ++j) {
+                hexbuf[i++] = hex[raw[j] / 16];
+                hexbuf[i++] = hex[raw[j] % 16];
+        }
+
+        hexbuf[i] = 0;
+        return hexbuf;
+}
+

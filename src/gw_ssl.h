@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with IRCGW.  If not, see <http://www.gnu.org/licenses/>.
  *
- * $Id:$
+ * $Id$
  */
 #ifndef GW_SSL_H
 #define GW_SSL_H
@@ -28,6 +28,8 @@ int sslenabled;
 
 SSL_CTX *gw_sslctx;
 
+char* gw_ssl_get_hash(SSL *ssl);
+int gw_ssl_verify(int preverify_ok, X509_STORE_CTX *cert);
 void gw_ssl_init();
 void gw_ssl_deinit();
 SSL* gw_ssl_connect(int fd);
