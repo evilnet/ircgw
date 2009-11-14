@@ -24,23 +24,23 @@
 char* gw_ssl_get_hash(SSL *ssl) {
 	X509* cert;
 	unsigned int n = 0;
-	unsigned char md[EVP_MAX_MD_SIZE];
+	static unsigned char md[EVP_MAX_MD_SIZE];
 	const EVP_MD *digest = EVP_sha1();
 
 	cert = SSL_get_peer_certificate(ssl);
 
 	if (!(cert)) {
 		alog(LOG_DEBUG, "No client certificate provided");
-		return strdup("");
+		return NULL;
 	}
 
 	if (!X509_digest(cert, digest, md, &n)) {
 		alog(LOG_DEBUG, "Unable to digest SSL certificate");
 		X509_free(cert);
-		return strdup("");
+		return NULL;
 	} else {
 		X509_free(cert);
-		return strdup(md);
+		return (md);
 	}
 }
 
@@ -107,9 +107,9 @@ SSL* gw_ssl_accept(int fd) {
 		}
 		alog(LOG_DEBUG, "Ssl: new()");
 
-		h = gw_ssl_get_hash(ssl);
-		alog(LOG_DEBUG, "Client certificate SHA1: %s", gw_strhex(h, 20));
-		free(h);
+		if ((h = gw_ssl_get_hash(ssl))) {
+			alog(LOG_DEBUG, "Client certificate SHA1: %s", gw_strhex(h, 20));
+		}
 
 		return ssl;
 	} else {

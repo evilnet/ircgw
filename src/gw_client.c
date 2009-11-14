@@ -109,7 +109,6 @@ int client_checkfd(struct Client *c) {
 			}
 			socket_write(c->rsock, buf);
 		}
-		free(buf);
 	}
 
 	if (FD_ISSET(fdr, &fds)) {
@@ -122,7 +121,6 @@ int client_checkfd(struct Client *c) {
 		} else {
 			socket_write(c->lsock, buf);
 		}
-		free(buf);
 	}
 
 	return 1;

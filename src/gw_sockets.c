@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with IRCGW.  If not, see <http://www.gnu.org/licenses/>.
  *
- * $Id:$
+ * $Id$
  */
 #include "gw_sockets.h"
 
@@ -258,7 +258,7 @@ struct Client* socket_accept(struct Listener *l) {
 }
 
 char* socket_read(struct Socket *s) {
-	char buf[4096];
+	static char buf[4096];
 	int lenread;
 
 	assert(s != NULL);
@@ -275,7 +275,7 @@ char* socket_read(struct Socket *s) {
 		buf[0] = '\0';
 	buf[lenread] = '\0';
 
-	return strdup(buf);
+	return (buf);
 }
 
 int socket_write(struct Socket *s, char *in) {
