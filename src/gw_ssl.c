@@ -25,7 +25,7 @@ char* gw_ssl_get_hash(SSL *ssl) {
 	X509* cert;
 	unsigned int n = 0;
 	static unsigned char md[EVP_MAX_MD_SIZE];
-	const EVP_MD *digest = EVP_sha1();
+	const EVP_MD *digest = EVP_sha256();
 
 	cert = SSL_get_peer_certificate(ssl);
 
@@ -108,7 +108,7 @@ SSL* gw_ssl_accept(int fd) {
 		alog(LOG_DEBUG, "Ssl: new()");
 
 		if ((h = gw_ssl_get_hash(ssl))) {
-			alog(LOG_DEBUG, "Client certificate SHA1: %s", gw_strhex(h, 20));
+			alog(LOG_DEBUG, "Client certificate SHA256: %s", gw_strhex(h, 32));
 		}
 
 		return ssl;
