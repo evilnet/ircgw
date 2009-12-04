@@ -35,7 +35,7 @@ char* gw_strrev(char *in) {
 }
 
 char* gw_strhex(const unsigned char *raw, size_t rawsz) {
-        const char *hex = "0123456789abcdef";
+        const char *hex = "0123456789ABCDEF";
         static char hexbuf[514];
         size_t i, j;
 
