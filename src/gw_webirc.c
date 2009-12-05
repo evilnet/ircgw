@@ -198,3 +198,20 @@ char* getwebircmsg(struct Client *cli) {
 	return msg;
 }
 
+char* getwebircextramsg(struct Client *cli, char* type, char* data) {
+	char *msg;
+
+	assert(cli != NULL);
+	assert(cli->listener != NULL);
+
+	if (!cli->listener->wircpass || !LstIsWebIRC(cli->listener))
+		return NULL;
+
+	if (!type || !data)
+		return NULL;
+
+	msg = malloc(IRCMSGMAXLEN);
+	sprintf(msg, MSG_WEBIRCEXTRA, cli->listener->wircpass, type, data);
+
+	return msg;
+}

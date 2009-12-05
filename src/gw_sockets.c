@@ -49,6 +49,9 @@ int socket_del(struct Socket *s) {
 	else
 		s->prev->next = s->next;
 
+	if (s->sslfp)
+		free(s->sslfp);
+
 	alog(LOG_DEBUG, "Sck free()");
 	free(s);
 	return 1;
@@ -223,6 +226,7 @@ struct Client* socket_accept(struct Listener *l) {
 	struct sockaddr_in6 sa6;
 	struct sockaddr_in sa;
 	int size = 0;
+	char *h;
 
 	assert(l != NULL);
 
@@ -247,9 +251,15 @@ struct Client* socket_accept(struct Listener *l) {
 		return NULL;
 	}
 
-	if (LstIsSSL(l))
+	if (LstIsSSL(l)) {
 		cli->lsock->ssl = gw_ssl_accept(cli->lsock->fd);
-	else
+		if (cli->lsock->ssl) {
+			if ((h = gw_ssl_get_hash(cli->lsock->ssl))) {
+				alog(LOG_DEBUG, "Client certificate SHA256: %s", gw_strhex(h, 32));
+				cli->lsock->sslfp = strdup(gw_strhex(h, 32));
+			}
+		}
+	} else
 		cli->lsock->ssl = NULL;
 
 	alog(LOG_DEBUG, "New FD: %d (%d)", cli->lsock->fd, (int)sizeof(cli));

@@ -27,11 +27,13 @@
 
 #define MSG_WEBIRC	"WEBIRC %s ircgw %s %s\r\n"
 #define MSG_WEBIRC_EXT	"WEBIRC %s ircgw %s %s :%s\r\n"
+#define MSG_WEBIRCEXTRA "WEBIRCEXTRA %s %s :%s\r\n"
 
 char* expandaddr6(struct gwin6_addr *a);
 char* expandaddr6colon(struct gwin6_addr *a);
 char* get_rdns6(struct gwin6_addr ipaddr);
 char* get_rdns(struct gwin_addr ipaddr);
 char* getwebircmsg(struct Client *cli);
+char* getwebircextramsg(struct Client *cli, char* type, char* data);
 
 #endif

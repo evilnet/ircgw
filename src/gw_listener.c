@@ -248,12 +248,22 @@ void listener_parseflags(struct Listener *l, char *flags) {
 				LstSetLiteralIPv6(l);
 				break;
 			}
+			case 'X':
+			case 'x': {
+				LstSetWebIRCExtra(l);
+				break;
+			}
 		}
 	}
+
+	if (LstIsWebIRCExtra(l) && !LstIsWebIRC(l))
+		LstClrWebIRCExtra(l);
+	if (LstIsWebIRCv6(l) && !LstIsWebIRC(l))
+		LstClrWebIRCv6(l);
 }
 
 char* listener_flags(struct Listener *l) {
-	char *flags = strdup("-------");
+	char *flags = strdup("--------");
 
 	if (LstIsNoSuffix(l))
 		flags[0] = 'H';
@@ -269,7 +279,9 @@ char* listener_flags(struct Listener *l) {
 		flags[5] = 'W';
 	if (LstIsWebIRCv6(l))
 		flags[6] = '6';
-	flags[7] = '\0';
+	if (LstIsWebIRCExtra(l))
+		flags[7] = 'X';
+	flags[8] = '\0';
 
 	return flags;
 }

@@ -96,7 +96,6 @@ SSL* gw_ssl_connect(int fd) {
 
 SSL* gw_ssl_accept(int fd) {
 	SSL *ssl;
-	char *h;
 
 	if (sslenabled) {
 		ssl=SSL_new(gw_sslctx);
@@ -106,10 +105,6 @@ SSL* gw_ssl_accept(int fd) {
 			return NULL;
 		}
 		alog(LOG_DEBUG, "Ssl: new()");
-
-		if ((h = gw_ssl_get_hash(ssl))) {
-			alog(LOG_DEBUG, "Client certificate SHA256: %s", gw_strhex(h, 32));
-		}
 
 		return ssl;
 	} else {

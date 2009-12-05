@@ -82,6 +82,7 @@ struct Socket {
 	int af;				/* AF_INET or AF_INET6 */
 	int fd;				/* File descriptor */
 	SSL *ssl;			/* SSL connection */
+	char *sslfp;			/* SSL fingerprint */
 };
 
 struct Listener {

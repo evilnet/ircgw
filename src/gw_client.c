@@ -89,7 +89,7 @@ int client_checkfd(struct Client *c) {
         int fdl = c->lsock->fd;
 	int fdr = c->rsock->fd;
 	char *buf;
-	char *wirc;
+	char *wirc, *wircex;
 
 	if (FD_ISSET(fdl, &fds)) {
 		buf = socket_read(c->lsock);
@@ -105,6 +105,13 @@ int client_checkfd(struct Client *c) {
 				if (wirc != NULL) {
 					socket_write(c->rsock, wirc);
 					free(wirc);
+				}
+				if (LstIsWebIRCExtra(c->listener) && c->lsock->sslfp) {
+					wircex = getwebircextramsg(c, "sslfp", c->lsock->sslfp);
+					if (wircex != NULL) {
+						socket_write(c->rsock, wircex);
+						free(wircex);
+					}
 				}
 			}
 			socket_write(c->rsock, buf);
