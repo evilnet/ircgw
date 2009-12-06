@@ -170,19 +170,30 @@ int listener_checkfd(struct Listener *l) {
 	char *ip, *lip;
 	char result[IPADDRMAXLEN];
 	struct Client *cli;
+	struct sockaddr_in6 sa6;
+	struct sockaddr_in sa;
+	int size = 0;
 
 	if (FD_ISSET(fd, &fds)) {
-		if (IsIP6(l->sock))
-			ip = (char *)inet_ntop(l->sock->af, &l->sock->addr6, result, IPADDRMAXLEN);
-		else
-			ip = (char *)inet_ntop(l->sock->af, &l->sock->addr, result, IPADDRMAXLEN);
-		lip = strdup(ip);
-
-		alog(LOG_DEBUG, "Incoming connection on [%s]:%d", lip, l->sock->port);
 		cli = socket_accept(l);
 
 		if (cli == NULL)
 			return 0;
+
+		if (IsIP6(l->sock)) {
+			size = sizeof(struct sockaddr_in6);
+			getsockname(cli->lsock->fd, (struct sockaddr *)&sa6, (socklen_t*)&size);
+			/* ip = (char *)inet_ntop(l->sock->af, &l->sock->addr6, result, IPADDRMAXLEN); */
+			ip = (char *)inet_ntop(l->sock->af, &sa6.sin6_addr, result, IPADDRMAXLEN);
+		} else {
+			size = sizeof(struct sockaddr_in);
+			getsockname(cli->lsock->fd, (struct sockaddr *)&sa, (socklen_t*)&size);
+			/* ip = (char *)inet_ntop(l->sock->af, &l->sock->addr, result, IPADDRMAXLEN); */
+			ip = (char *)inet_ntop(l->sock->af, &sa.sin_addr, result, IPADDRMAXLEN);
+		}
+		lip = strdup(ip);
+
+		alog(LOG_DEBUG, "Incoming connection on [%s]:%d", lip, l->sock->port);
 
 		if (IsIP6(cli->lsock))
 			ip = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr6, result, IPADDRMAXLEN);
