@@ -29,6 +29,7 @@ struct Socket* socket_new() {
 
 	new->fd = -1;
 	new->ssl = NULL;
+	new->sslfp = NULL;
 
 	new->prev = NULL;
 	if (sockets != NULL)
