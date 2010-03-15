@@ -56,6 +56,7 @@
 #define ClrFlag(o, flag)	o->flags &= ~flag
 
 #define IsIP6(o)		((o->af == AF_INET6) ? 1 : 0)
+#define IsIP6to4(o)		((o->addr6.addr.addr16[0] == htons(0x2002)) ? 1 : 0)
 
 struct gwin6_addr {
 	union {

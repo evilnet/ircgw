@@ -98,6 +98,7 @@ char* getwebircmsg(struct Client *cli) {
 	char *ip6, *host, *hostpart = NULL;
 	char result[IPADDRMAXLEN];
 	int i = 0, hostfree = 0, hpfree = 0, rdnsdone = 0;
+	int af = AF_INET;
 	unsigned char hash1[16], hash2[16], hash3[16];
 	MD5_CTX ctx1, ctx2, ctx3;
 
@@ -107,7 +108,7 @@ char* getwebircmsg(struct Client *cli) {
 	if (!cli->listener->wircpass || !LstIsWebIRC(cli->listener))
 		return NULL;
 
-	if (IsIP6(cli->lsock)) {
+	if (IsIP6(cli->lsock) && !(IsIP6to4(cli->lsock) && !LstIsWebIRCv6(cli->listener))) {
 		ip6 = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr6, result, IPADDRMAXLEN);
 		if (!LstIsNoRDNS(cli->listener))
 			hostpart = get_rdns6(cli->lsock->addr6);
@@ -166,11 +167,17 @@ char* getwebircmsg(struct Client *cli) {
 		}
 	} else {
 		ip6 = NULL;
-		ip = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr, result, IPADDRMAXLEN);
+		af = cli->lsock->af;
+		if (IsIP6to4(cli->lsock)) {
+			af = AF_INET;
+			cli->lsock->addr.addr.addr16[0] = cli->lsock->addr6.addr.addr16[1];
+			cli->lsock->addr.addr.addr16[1] = cli->lsock->addr6.addr.addr16[2];
+		}
+		ip = (char *)inet_ntop(af, &cli->lsock->addr, result, IPADDRMAXLEN);
 		if (!LstIsNoRDNS(cli->listener))
 			hostpart = get_rdns(cli->lsock->addr);
 		if (hostpart == NULL)
-			hostpart = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr, result, IPADDRMAXLEN);
+			hostpart = (char *)inet_ntop(af, &cli->lsock->addr, result, IPADDRMAXLEN);
 		else
 			rdnsdone = 1;
 

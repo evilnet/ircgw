@@ -31,6 +31,9 @@ struct Socket* socket_new() {
 	new->ssl = NULL;
 	new->sslfp = NULL;
 
+	memset(&(new->addr6), 0, 16);
+	memset(&(new->addr), 0, 4);
+
 	new->prev = NULL;
 	if (sockets != NULL)
 		sockets->prev = new;
