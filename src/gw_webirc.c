@@ -199,7 +199,7 @@ char* getwebircmsg(struct Client *cli) {
 		free(host);
 	if (hpfree)
 		free(hostpart);
-	if (IsIP6(cli->lsock) && !LstIsWebIRCv6(cli->listener))
+	if ((ip != NULL) && IsIP6(cli->lsock) && !LstIsWebIRCv6(cli->listener))
 		free(ip);
 
 	return msg;
