@@ -102,16 +102,12 @@ int client_checkfd(struct Client *c) {
 			if (!CliIsWebIRCSent(c)) {
 				CliSetWebIRCSent(c);
 				wirc = getwebircmsg(c);
-				if (wirc != NULL) {
+				if (wirc != NULL)
 					socket_write(c->rsock, wirc);
-					free(wirc);
-				}
 				if (LstIsWebIRCExtra(c->listener) && c->lsock->sslfp) {
 					wircex = getwebircextramsg(c, "sslfp", c->lsock->sslfp);
-					if (wircex != NULL) {
+					if (wircex != NULL)
 						socket_write(c->rsock, wircex);
-						free(wircex);
-					}
 				}
 			}
 			socket_write(c->rsock, buf);

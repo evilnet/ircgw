@@ -21,19 +21,6 @@
  */
 #include "gw_string.h"
 
-char* gw_strrev(char *in) {
-	char *ret = strdup(in);
-	int i = 0;
-	int r = strlen(in) - 1;
-
-	for (i=0; i<strlen(in); i++) {
-		ret[r--] = in[i];
-	}
-	ret[strlen(in)] = '\0';
-
-	return ret;
-}
-
 char* gw_strhex(const unsigned char *raw, size_t rawsz) {
         const char *hex = "0123456789ABCDEF";
         static char hexbuf[514];

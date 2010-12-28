@@ -22,9 +22,9 @@
 #include "gw_webirc.h"
 
 char* expandaddr6(struct gwin6_addr *a) {
-	char *ret = malloc(IPEXPMAXLEN);
+	static char ret[IPEXPMAXLEN];
 
-	sprintf(ret, "%08x%08x%08x%08x", htonl(a->addr.addr32[0]),
+	snprintf((char *)&ret, IPEXPMAXLEN, "%08x%08x%08x%08x", htonl(a->addr.addr32[0]),
 		htonl(a->addr.addr32[1]), htonl(a->addr.addr32[2]),
 		htonl(a->addr.addr32[3]));
 
@@ -32,15 +32,15 @@ char* expandaddr6(struct gwin6_addr *a) {
 }
 
 char* expandaddr6colon(struct gwin6_addr *a) {
-	char *ret = malloc(IPEXPMAXLEN);
+	static char ret[IPEXPMAXLEN];
 
-	sprintf(ret, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
+	snprintf((char *)&ret, IPEXPMAXLEN, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
 		htons(a->addr.addr16[0]), htons(a->addr.addr16[1]),
 		htons(a->addr.addr16[2]), htons(a->addr.addr16[3]),
 		htons(a->addr.addr16[4]), htons(a->addr.addr16[5]),
 		htons(a->addr.addr16[6]), htons(a->addr.addr16[7]));
 
-	return ret;
+	return (char *)&ret;
 }
 
 char* get_rdns6(struct gwin6_addr ipaddr) {
@@ -65,7 +65,7 @@ char* get_rdns6(struct gwin6_addr ipaddr) {
 	if (valid && her)
 		return her->h_name;
 	else
-		return NULL;
+		return "";
 }
 
 char* get_rdns(struct gwin_addr ipaddr) {
@@ -90,123 +90,129 @@ char* get_rdns(struct gwin_addr ipaddr) {
 	if (valid && her)
 		return her->h_name;
 	else
-		return NULL;
+		return "";
 }
 
 char* getwebircmsg(struct Client *cli) {
-	char *msg, *ip, *ipexp;
-	char *ip6, *host, *hostpart = NULL;
-	char result[IPADDRMAXLEN];
-	int i = 0, hostfree = 0, hpfree = 0, rdnsdone = 0;
-	int af = AF_INET;
+	static char msg[IRCMSGMAXLEN];
+	char host[HOSTMAXLEN], hostpart[HOSTMAXLEN];
+	char ip[IPADDRMAXLEN], ip6[IPADDRMAXLEN];
+	int af = 0, rdnsdone = 0, i = 0, j = 31;
+	char temp = 0;
 	unsigned char hash1[16], hash2[16], hash3[16];
 	MD5_CTX ctx1, ctx2, ctx3;
 
 	assert(cli != NULL);
 	assert(cli->listener != NULL);
-	
+	assert(cli->lsock != NULL);
+
+	ip6[0] = 0;
+	ip[0] = 0;
+	af = cli->lsock->af;
+
+	/* Make sure we actually need to run through this process */
 	if (!cli->listener->wircpass || !LstIsWebIRC(cli->listener))
 		return NULL;
 
 	if (IsIP6(cli->lsock) && !(IsIP6to4(cli->lsock) && !LstIsWebIRCv6(cli->listener))) {
-		ip6 = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr6, result, IPADDRMAXLEN);
-		if (!LstIsNoRDNS(cli->listener))
-			hostpart = get_rdns6(cli->lsock->addr6);
-		if (hostpart != NULL)
-			rdnsdone = 1;
-		if (LstIsWebIRCv6(cli->listener)) {
-			ip = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr6, result, IPADDRMAXLEN);
-			if (hostpart == NULL)
-				hostpart = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr6, result, IPADDRMAXLEN);
+		/* Ipv6 client */
 
-			if (cli->listener->wircsuff && !LstIsNoSuffix(cli->listener) && !(rdnsdone && LstIsRDNSNoSuffix(cli->listener))) {
-				hostfree = 1;
-				host = malloc(HOSTMAXLEN);
-				sprintf(host, "%s.%s", hostpart, cli->listener->wircsuff);
-			} else
-				host = hostpart;
+		/* Get presentation format IPv6 IP */
+		inet_ntop(cli->lsock->af, &cli->lsock->addr6, (char *)&ip6, IPADDRMAXLEN);
+
+		/* Get rDNS for IP, will decide what to use in case of no rDNS next */
+		if (!LstIsNoRDNS(cli->listener))
+			snprintf((char *)&hostpart, HOSTMAXLEN, "%s", get_rdns6(cli->lsock->addr6));
+		if (hostpart[0] != 0)
+			rdnsdone = 1;
+
+		if (LstIsWebIRCv6(cli->listener)) {
+			/* IPv6 WEBIRC supported */
+			strncpy((char *)&ip, (char *)&ip6, IPADDRMAXLEN);
+
+			/* Use presentation format IP as host name due to failed rDNS */
+			if (hostpart[0] == 0)
+				strncpy((char *)&hostpart, (char *)&ip, HOSTMAXLEN);
 		} else {
+			/* IPv6 WEBIRC NOT supported */
+
+			/* Generate hash 1 (first 64 bits of IPv6 IP) */
 			MD5_Init(&ctx1);
 			for (i=0; i<8; i++) {
 				MD5_Update(&ctx1, (unsigned const char*)&cli->lsock->addr6.addr.addr8[i], 1);
 			}
 			MD5_Final(hash1, &ctx1);
 
+			/* Generate hash 2 (next 32 bits of IPv6 IP) */
 			MD5_Init(&ctx2);
 			for (i=8; i<12; i++) {
 				MD5_Update(&ctx2, (unsigned const char*)&cli->lsock->addr6.addr.addr8[i], 1);
 			}
 			MD5_Final(hash2, &ctx2);
 
+			/* Generate hash 3 (last 32 bits of IPv6 IP) */
 			MD5_Init(&ctx3);
 			for (i=12; i<16; i++) {
 				MD5_Update(&ctx3, (unsigned const char*)&cli->lsock->addr6.addr.addr8[i], 1);
 			}
 			MD5_Final(hash3, &ctx3);
-
-			ip = malloc(15);
-			sprintf(ip, "0.%d.%d.%d", hash1[3], hash2[7], hash3[11]);
-
-			if (hostpart == NULL) {
-				hpfree = 1;
+			
+			/* Produce pseudo IPv4 IP address using bytes 3, 7 and 11 of hashes 1 2 and 3 respectively */
+			snprintf((char *)&ip, IPADDRMAXLEN, "0.%d.%d.%d", hash1[3], hash2[7], hash3[11]);
+			
+			/* If rDNS failed decide which form of literal IPv6 IP to use */
+			if (hostpart[0] == 0) {
 				if (LstIsLiteralIPv6(cli->listener))
-					hostpart = expandaddr6colon(&cli->lsock->addr6);
+					snprintf((char *)&hostpart, HOSTMAXLEN, "%s", expandaddr6colon(&cli->lsock->addr6));
 				else {
-					ipexp = expandaddr6(&cli->lsock->addr6);
-					hostpart = gw_strrev(ipexp);
-					free(ipexp);
+					snprintf((char *)&hostpart, HOSTMAXLEN, "%s", expandaddr6(&cli->lsock->addr6));
+					for (i=0; i<16; i++) {
+						temp = hostpart[i];
+						hostpart[i] = hostpart[j];
+						hostpart[j--] = temp;
+					}
 				}
 			}
-
-			if (cli->listener->wircsuff && !LstIsNoSuffix(cli->listener) && !(rdnsdone && LstIsRDNSNoSuffix(cli->listener))) {
-				hostfree = 1;
-				host = malloc(HOSTMAXLEN);
-				sprintf(host, "%s.%s", hostpart, cli->listener->wircsuff);
-			} else
-				host = hostpart;
 		}
 	} else {
-		ip6 = NULL;
-		af = cli->lsock->af;
+		/* IPv4 client or IPv6 using 6to4 (2002::/16) */
+
+		/* Prepare for 6to4 IP to allow conversion */
 		if (IsIP6to4(cli->lsock)) {
 			af = AF_INET;
 			cli->lsock->addr.addr.addr16[0] = cli->lsock->addr6.addr.addr16[1];
 			cli->lsock->addr.addr.addr16[1] = cli->lsock->addr6.addr.addr16[2];
 		}
-		ip = (char *)inet_ntop(af, &cli->lsock->addr, result, IPADDRMAXLEN);
+
+		/* Get presentation format IPv4 IP */
+		inet_ntop(af, &cli->lsock->addr, (char *)&ip, IPADDRMAXLEN);
+
+		/* Get rDNS for IP, if fails use presentation format IP as host */
 		if (!LstIsNoRDNS(cli->listener))
-			hostpart = get_rdns(cli->lsock->addr);
-		if (hostpart == NULL)
-			hostpart = (char *)inet_ntop(af, &cli->lsock->addr, result, IPADDRMAXLEN);
+			snprintf((char *)&hostpart, HOSTMAXLEN, "%s", get_rdns(cli->lsock->addr));
+		if (hostpart[0] == 0)
+			strncpy((char *)&hostpart, (char *)&ip, HOSTMAXLEN);
 		else
 			rdnsdone = 1;
-
-		if (cli->listener->wircsuff && !LstIsNoSuffix(cli->listener) && !(rdnsdone && LstIsRDNSNoSuffix(cli->listener))) {
-			hostfree = 1;
-			host = malloc(HOSTMAXLEN);
-			sprintf(host, "%s.%s", hostpart, cli->listener->wircsuff);
-		} else
-			host = hostpart;
 	}
-
-	msg = malloc(IRCMSGMAXLEN);
-	if (ip6 != NULL)
-		sprintf(msg, MSG_WEBIRC_EXT, cli->listener->wircpass, host, ip, ip6);
+	
+	/* Finalize host string appending suffix if required and rDNS was successful */
+	if (cli->listener->wircsuff && !LstIsNoSuffix(cli->listener) && !(rdnsdone && LstIsRDNSNoSuffix(cli->listener)))
+		snprintf((char *)&host, HOSTMAXLEN, "%s.%s", hostpart, cli->listener->wircsuff);
 	else
-		sprintf(msg, MSG_WEBIRC, cli->listener->wircpass, host, ip);
+		strncpy((char *)&host, (char *)&hostpart, HOSTMAXLEN);
 
-	if (hostfree)
-		free(host);
-	if (hpfree)
-		free(hostpart);
-	if ((ip != NULL) && IsIP6(cli->lsock) && !LstIsWebIRCv6(cli->listener))
-		free(ip);
+	/* Format and produce final message */
+	if (ip6[0] != 0)
+		snprintf((char *)&msg, IRCMSGMAXLEN, MSG_WEBIRC_EXT, cli->listener->wircpass, host, ip, ip6);
+	else
+		snprintf((char *)&msg, IRCMSGMAXLEN, MSG_WEBIRC, cli->listener->wircpass, host, ip);
 
-	return msg;
+	return (char *)&msg;
 }
 
 char* getwebircextramsg(struct Client *cli, char* type, char* data) {
-	char *msg;
+	static char msg[IRCMSGMAXLEN];
 
 	assert(cli != NULL);
 	assert(cli->listener != NULL);
@@ -217,8 +223,8 @@ char* getwebircextramsg(struct Client *cli, char* type, char* data) {
 	if (!type || !data)
 		return NULL;
 
-	msg = malloc(IRCMSGMAXLEN);
-	sprintf(msg, MSG_WEBIRCEXTRA, cli->listener->wircpass, type, data);
+	snprintf((char *)&msg, IRCMSGMAXLEN, MSG_WEBIRCEXTRA, cli->listener->wircpass, type, data);
 
-	return msg;
+	return (char *)&msg;
 }
+
