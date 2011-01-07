@@ -122,7 +122,7 @@ char* getwebircmsg(struct Client *cli) {
 
 		/* Get rDNS for IP, will decide what to use in case of no rDNS next */
 		if (!LstIsNoRDNS(cli->listener))
-			snprintf((char *)&hostpart, HOSTMAXLEN, "%s", get_rdns6(cli->lsock->addr6));
+			strncpy((char *)&hostpart, get_rdns6(cli->lsock->addr6), HOSTMAXLEN);
 		if (hostpart[0] != 0)
 			rdnsdone = 1;
 
@@ -163,9 +163,9 @@ char* getwebircmsg(struct Client *cli) {
 			/* If rDNS failed decide which form of literal IPv6 IP to use */
 			if (hostpart[0] == 0) {
 				if (LstIsLiteralIPv6(cli->listener))
-					snprintf((char *)&hostpart, HOSTMAXLEN, "%s", expandaddr6colon(&cli->lsock->addr6));
+					strncpy((char *)&hostpart, expandaddr6colon(&cli->lsock->addr6), HOSTMAXLEN);
 				else {
-					snprintf((char *)&hostpart, HOSTMAXLEN, "%s", expandaddr6(&cli->lsock->addr6));
+					strncpy((char *)&hostpart, expandaddr6(&cli->lsock->addr6), HOSTMAXLEN);
 					for (i=0; i<16; i++) {
 						temp = hostpart[i];
 						hostpart[i] = hostpart[j];
@@ -189,7 +189,7 @@ char* getwebircmsg(struct Client *cli) {
 
 		/* Get rDNS for IP, if fails use presentation format IP as host */
 		if (!LstIsNoRDNS(cli->listener))
-			snprintf((char *)&hostpart, HOSTMAXLEN, "%s", get_rdns(cli->lsock->addr));
+			strncpy((char *)&hostpart, get_rdns(cli->lsock->addr), HOSTMAXLEN);
 		if (hostpart[0] == 0)
 			strncpy((char *)&hostpart, (char *)&ip, HOSTMAXLEN);
 		else
