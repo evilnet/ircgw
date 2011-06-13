@@ -114,7 +114,7 @@ char* getwebircmsg(struct Client *cli) {
 	if (!cli->listener->wircpass || !LstIsWebIRC(cli->listener))
 		return NULL;
 
-	if (IsIP6(cli->lsock) && !(IsIP6to4(cli->lsock) && !LstIsWebIRCv6(cli->listener))) {
+	if (IsIP6(cli->lsock) && !((IsIP6to4(cli->lsock) || IsIP6Teredo(cli->lsock)) && !LstIsWebIRCv6(cli->listener))) {
 		/* Ipv6 client */
 
 		/* Get presentation format IPv6 IP */
@@ -175,13 +175,16 @@ char* getwebircmsg(struct Client *cli) {
 			}
 		}
 	} else {
-		/* IPv4 client or IPv6 using 6to4 (2002::/16) */
-
-		/* Prepare for 6to4 IP to allow conversion */
+		/* IPv4 client or IPv6 using 6to4 (2002::/16) or teredo (2001:0::/32) */
 		if (IsIP6to4(cli->lsock)) {
+			/* Prepare for 6to4 IP to allow conversion */
 			af = AF_INET;
 			cli->lsock->addr.addr.addr16[0] = cli->lsock->addr6.addr.addr16[1];
 			cli->lsock->addr.addr.addr16[1] = cli->lsock->addr6.addr.addr16[2];
+		} else if (IsIP6Teredo(cli->lsock)) {
+			/* Prepare for teredo IP to allow conversion */
+			af = AF_INET;
+			cli->lsock->addr.addr.addr32[0] = (cli->lsock->addr6.addr.addr32[3] ^ 0xFFFFFFFF);
 		}
 
 		/* Get presentation format IPv4 IP */
