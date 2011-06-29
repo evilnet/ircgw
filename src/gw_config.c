@@ -62,7 +62,8 @@ void config_load() {
 					if (!(lochost && locport && remhost && remport))
 						continue;
 
-					l = listener_add(lochost, locport);
+					if ((l = listener_add(lochost, locport)) == NULL)
+						continue;
 					if (wircpass)
 						l->wircpass = strdup(wircpass);
 					if (wircsuff)
