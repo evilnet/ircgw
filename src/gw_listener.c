@@ -131,6 +131,7 @@ int listener_rebind(struct Listener *l) {
 			return 1;
 		}
 		alog(LOG_ERROR, "Bind error: %s", strerror(errno));
+		listener_del(l);
 	}
 	return 0;
 }
