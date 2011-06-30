@@ -25,11 +25,11 @@ struct Socket* socket_new() {
 	struct Socket *new;
 
 	new = malloc(sizeof(struct Socket));
+	memset(new, 0, sizeof(struct Socket));
 	alog(LOG_DEBUG, "Sck: new()");
 
 	new->fd = -1;
 	new->ssl = NULL;
-	new->sslfp = NULL;
 
 	memset(&(new->addr6), 0, 16);
 	memset(&(new->addr), 0, 4);
@@ -52,9 +52,6 @@ int socket_del(struct Socket *s) {
 		sockets = s->next;
 	else
 		s->prev->next = s->next;
-
-	if (s->sslfp)
-		free(s->sslfp);
 
 	alog(LOG_DEBUG, "Sck free()");
 	free(s);
@@ -118,7 +115,7 @@ int socket_bind(struct Listener *l) {
 	int optval = 1;
 	int bindRes = 0;
 
-	if ((l->sock->fd = socket(l->sock->af, SOCK_STREAM, 0)) == -1)
+	if ((l->sock->fd = socket(SockAF(l->sock), SOCK_STREAM, 0)) == -1)
 		return 0;
 
 	if (LstIsBound(l))
@@ -197,8 +194,6 @@ int socket_close(struct Socket *s) {
 
 struct Client* socket_accept(struct Listener *l) {
 	struct Client *cli;
-	struct sockaddr_in6 sa6;
-	struct sockaddr_in sa;
 	int size = 0;
 	char *h;
 
@@ -206,19 +201,13 @@ struct Client* socket_accept(struct Listener *l) {
 
 	cli = client_new(l);
 
-	if (IsIP6(l->sock)) {
-		size = sizeof(struct sockaddr_in6);
-		cli->lsock->fd = accept(l->sock->fd, (struct sockaddr*)&sa6, (socklen_t*)&size);
-		memcpy(&(cli->lsock->addr6), &sa6.sin6_addr, sizeof(struct gwin6_addr));
-		cli->lsock->port = ntohs(sa6.sin6_port);
-		cli->lsock->af = sa6.sin6_family;
-	} else {
-		size = sizeof(struct sockaddr_in);
-		cli->lsock->fd = accept(l->sock->fd, (struct sockaddr*)&sa, (socklen_t*)&size);
-		memcpy(&(cli->lsock->addr), &sa.sin_addr, sizeof(struct gwin_addr));
-		cli->lsock->port = ntohs(sa.sin_port);
-		cli->lsock->af = sa.sin_family;
-	}
+	size = sizeof(struct gw_sockaddr);
+	cli->lsock->fd = accept(l->sock->fd, (struct sockaddr*)&cli->lsock->sa, (socklen_t*)&size);
+
+	if (IsIP6(cli->lsock))
+		memcpy(&(cli->lsock->addr6), &cli->lsock->sa.sa_in6.sa_inaddr, sizeof(struct gwin6_addr));
+	else
+		memcpy(&(cli->lsock->addr), &cli->lsock->sa.sa_in.sa_inaddr, sizeof(struct gwin_addr));
 
 	if (LstIsClosed(l) || (cli->lsock->fd < 0)) {
 		client_del(cli);
@@ -230,7 +219,7 @@ struct Client* socket_accept(struct Listener *l) {
 		if (cli->lsock->ssl) {
 			if ((h = gw_ssl_get_hash(cli->lsock->ssl))) {
 				alog(LOG_DEBUG, "Client certificate SHA256: %s", gw_strhex(h, 32));
-				cli->lsock->sslfp = strdup(gw_strhex(h, 32));
+				strncpy((char *)&cli->lsock->sslfp, gw_strhex(h, 32), 65);
 			}
 		}
 	} else

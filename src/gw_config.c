@@ -65,9 +65,9 @@ void config_load() {
 					if ((l = listener_add(lochost, locport)) == NULL)
 						continue;
 					if (wircpass)
-						l->wircpass = strdup(wircpass);
+						strncpy((char *)&l->wircpass, wircpass, 255);
 					if (wircsuff)
-						l->wircsuff = strdup(wircsuff);
+						strncpy((char *)&l->wircsuff, wircsuff, 255);
 
 					listener_parseflags(l, flags);
 					if (!listener_setremhost(l, remhost, remport)) {

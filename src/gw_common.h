@@ -55,7 +55,10 @@
 #define SetFlag(o, flag)	o->flags |= flag
 #define ClrFlag(o, flag)	o->flags &= ~flag
 
-#define IsIP6(o)		((o->af == AF_INET6) ? 1 : 0)
+#define SockAF(s)		(s->sa.sa_family)
+#define SockPort(s)		(ntohs(s->sa.sa_port))
+
+#define IsIP6(o)		((SockAF(o) == AF_INET6) ? 1 : 0)
 #define IsIP6to4(o)		((o->addr6.addr.addr16[0] == htons(0x2002)) ? 1 : 0)
 #define IsIP6Teredo(o)		((o->addr6.addr.addr16[0] == htons(0x2001)) && (o->addr6.addr.addr16[1] == 0) ? 1 : 0)
 
@@ -95,27 +98,25 @@ struct gw_sockaddr {
 struct Socket {
 	struct Socket *next;
 	struct Socket *prev;
-	struct gw_sockaddr sa;
+	struct gw_sockaddr sa;		/* Socket address of this socket */
 	struct gwin6_addr addr6;	/* IPv6 address */
 	struct gwin_addr addr;		/* IPv4 address */
-	socklen_t salen;
-	int port;			/* Local Port */
-	int af;				/* AF_INET or AF_INET6 */
+	socklen_t salen;		/* Size of socket address struct */
 	int fd;				/* File descriptor */
 	SSL *ssl;			/* SSL connection */
-	char *sslfp;			/* SSL fingerprint */
+	char sslfp[65];			/* SSL fingerprint */
 };
 
 struct Listener {
 	struct Listener *next;
 	struct Listener *prev;
 	struct Socket *sock;		/* Socket associated with Listener */
-	struct gw_sockaddr remsa;
-	socklen_t remsalen;
+	struct gw_sockaddr remsa;	/* Remote socket address (to connect to) */
+	socklen_t remsalen;		/* Size of remote socket address struct */
 	int flags;			/* Listener flags (Added, Bound, Gagged) */
 	int clients;			/* Current client count */
-	char *wircpass;			/* WEBIRC Password */
-	char *wircsuff;			/* WEBIRC Host Suffix */
+	char wircpass[255];		/* WEBIRC Password */
+	char wircsuff[255];		/* WEBIRC Host Suffix */
 };
 
 struct Client {

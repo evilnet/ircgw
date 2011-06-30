@@ -47,6 +47,7 @@ struct Listener* listener_add(char *addr, char *port) {
 	}
 
 	new = malloc(sizeof(struct Listener));
+	memset(new, 0, sizeof(struct Listener));
 	alog(LOG_DEBUG, "Lst: new(%s, %s)", addr, port);
 
 	new->sock = socket_new();
@@ -55,13 +56,12 @@ struct Listener* listener_add(char *addr, char *port) {
 	new->sock->salen = ai->ai_addrlen;
 	freeaddrinfo(ai);
 
-	new->sock->af = new->sock->sa.sa_family;
-	if (new->sock->af == AF_INET)
+	if (SockAF(new->sock) == AF_INET)
 		memcpy(&new->sock->addr, &new->sock->sa.sa_in.sa_inaddr, sizeof(struct gwin_addr));
-	else if (new->sock->af == AF_INET6)
+	else if (SockAF(new->sock) == AF_INET6)
 		memcpy(&new->sock->addr6, &new->sock->sa.sa_in6.sa_inaddr, sizeof(struct gwin6_addr));
 	else {
-		alog(LOG_ERROR, "Error: Unknown address family for listener: %d", new->sock->af);
+		alog(LOG_ERROR, "Error: Unknown address family for listener: %d", SockAF(new->sock));
 		socket_del(new->sock);
 		free(new);
 		return NULL;
@@ -70,7 +70,6 @@ struct Listener* listener_add(char *addr, char *port) {
 	new->flags = 0;
 	new->clients = 0;
 	LstSetAdded(new);
-	new->sock->port = atoi(port);
 	new->prev = NULL;
 	if (listeners != NULL)
 		listeners->prev = new;
@@ -89,9 +88,6 @@ int listener_del(struct Listener* l) {
 	}
 
 	socket_close_listener(l);
-
-	free(l->wircpass);
-	free(l->wircsuff);
 
 	if (l->next != NULL)
 		l->next->prev = l->prev;
@@ -117,13 +113,13 @@ struct Listener* listener_find(struct gw_sockaddr *sa) {
 		memcpy(&ip, &sa->sa_in.sa_inaddr, sizeof(struct gwin_addr));
 
 	for (l = listeners; l != NULL; l = l->next) {
-		if (port == l->sock->port)
+		if (port == SockPort(l->sock))
 			m = 1;
 		if (IsIP6(l->sock)) {
-			if (!(addrcmp(&l->sock->addr6, &ip, l->sock->af)))
+			if (!(addrcmp(&l->sock->addr6, &ip, SockAF(l->sock))))
 				m = 0;
 		} else {
-			if (!(addrcmp((struct gwin6_addr *)&l->sock->addr, &ip, l->sock->af)))
+			if (!(addrcmp((struct gwin6_addr *)&l->sock->addr, &ip, SockAF(l->sock))))
 				m = 0;
 		}
 
@@ -202,7 +198,7 @@ int listener_setremhost(struct Listener *l, char *raddr, char *rport) {
 	freeaddrinfo(ai);
 
 	if ((l->remsa.sa_family != AF_INET) && (l->remsa.sa_family != AF_INET6)) {
-		alog(LOG_ERROR, "Error: Unknown address family for remote: %d", new->sock->af);
+		alog(LOG_ERROR, "Error: Unknown address family for remote: %d", SockAF(new->sock));
 		return 0;
 	}
 
@@ -229,21 +225,21 @@ int listener_checkfd(struct Listener *l) {
 		if (IsIP6(l->sock)) {
 			size = sizeof(struct sockaddr_in6);
 			getsockname(cli->lsock->fd, (struct sockaddr *)&sa6, (socklen_t*)&size);
-			inet_ntop(l->sock->af, &sa6.sin6_addr, (char *)&ip, IPADDRMAXLEN);
+			inet_ntop(SockAF(l->sock), &sa6.sin6_addr, (char *)&lip, IPADDRMAXLEN);
 		} else {
 			size = sizeof(struct sockaddr_in);
 			getsockname(cli->lsock->fd, (struct sockaddr *)&sa, (socklen_t*)&size);
-			inet_ntop(l->sock->af, &sa.sin_addr, (char *)&ip, IPADDRMAXLEN);
+			inet_ntop(SockAF(l->sock), &sa.sin_addr, (char *)&lip, IPADDRMAXLEN);
 		}
 
-		alog(LOG_DEBUG, "Incoming connection on [%s]:%d", lip, l->sock->port);
+		alog(LOG_DEBUG, "Incoming connection on [%s]:%d", lip, SockPort(l->sock));
 
 		if (IsIP6(cli->lsock))
-			inet_ntop(cli->lsock->af, &cli->lsock->addr6, (char *)&lip, IPADDRMAXLEN);
+			inet_ntop(SockAF(cli->lsock), &cli->lsock->addr6, (char *)&ip, IPADDRMAXLEN);
 		else
-			inet_ntop(cli->lsock->af, &cli->lsock->addr, (char *)&lip, IPADDRMAXLEN);
+			inet_ntop(SockAF(cli->lsock), &cli->lsock->addr, (char *)&ip, IPADDRMAXLEN);
 
-		alog(LOG_NORM, "Accepted new client from [%s]:%d on [%s]:%d", ip, cli->lsock->port, lip, l->sock->port);
+		alog(LOG_NORM, "Accepted new client from [%s]:%d on [%s]:%d", ip, SockPort(cli->lsock), lip, SockPort(l->sock));
 
 		if (!socket_connect(cli))
 			return 0;
@@ -315,26 +311,18 @@ void listener_parseflags(struct Listener *l, char *flags) {
 }
 
 char* listener_flags(struct Listener *l) {
-	char *flags = strdup("--------");
+	static char flags[9];
 
-	if (LstIsNoSuffix(l))
-		flags[0] = 'H';
-	if (LstIsLiteralIPv6(l))
-		flags[1] = 'L';
-	if (LstIsRDNSNoSuffix(l))
-		flags[2] = 'N';
-	if (LstIsNoRDNS(l))
-		flags[3] = 'R';
-	if (LstIsSSL(l))
-		flags[4] = 'S';
-	if (LstIsWebIRC(l))
-		flags[5] = 'W';
-	if (LstIsWebIRCv6(l))
-		flags[6] = '6';
-	if (LstIsWebIRCExtra(l))
-		flags[7] = 'X';
+	flags[0] = LstIsNoSuffix(l) ? 'H' : '-';
+	flags[1] = LstIsLiteralIPv6(l) ? 'L' : '-';
+	flags[2] = LstIsRDNSNoSuffix(l) ? 'N' : '-';
+	flags[3] = LstIsNoRDNS(l) ? 'R' : '-';
+	flags[4] = LstIsSSL(l) ? 'S' : '-';
+	flags[5] = LstIsWebIRC(l) ? 'W' : '-';
+	flags[6] = LstIsWebIRCv6(l) ? '6' : '-';
+	flags[7] = LstIsWebIRCExtra(l) ? 'X' : '-';
 	flags[8] = '\0';
 
-	return flags;
+	return (char *)&flags;
 }
 

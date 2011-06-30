@@ -90,13 +90,11 @@ int print_listener (struct Listener* l) {
 	char *flags = listener_flags(l);
 
 	if (IsIP6(l->sock)) {
-		ip = (char *)inet_ntop(l->sock->af, &l->sock->addr6, result, IPADDRMAXLEN);
+		ip = (char *)inet_ntop(SockAF(l->sock), &l->sock->addr6, result, IPADDRMAXLEN);
 	} else
-		ip = (char *)inet_ntop(l->sock->af, &l->sock->addr, result, IPADDRMAXLEN);
+		ip = (char *)inet_ntop(SockAF(l->sock), &l->sock->addr, result, IPADDRMAXLEN);
 
-	alog(LOG_NORM, "Listener: [%s]:%d (Flags: %s)", ip, l->sock->port, flags);
-
-	free(flags);
+	alog(LOG_NORM, "Listener: [%s]:%d (Flags: %s)", ip, SockPort(l->sock), flags);
 
 	return 0;
 }

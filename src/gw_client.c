@@ -25,6 +25,7 @@ struct Client* client_new(struct Listener *l) {
 	struct Client *new;
 
 	new = malloc(sizeof(struct Client));
+	memset(new, 0, sizeof(struct Client));
 	alog(LOG_DEBUG, "Cli: new()");
 
 	new->lsock = socket_new();

@@ -108,17 +108,17 @@ char* getwebircmsg(struct Client *cli) {
 
 	ip6[0] = 0;
 	ip[0] = 0;
-	af = cli->lsock->af;
+	af = SockAF(cli->lsock);
 
 	/* Make sure we actually need to run through this process */
-	if (!cli->listener->wircpass || !LstIsWebIRC(cli->listener))
+	if ((cli->listener->wircpass[0] == 0) || !LstIsWebIRC(cli->listener))
 		return NULL;
 
 	if (IsIP6(cli->lsock) && !((IsIP6to4(cli->lsock) || IsIP6Teredo(cli->lsock)) && !LstIsWebIRCv6(cli->listener))) {
 		/* Ipv6 client */
 
 		/* Get presentation format IPv6 IP */
-		inet_ntop(cli->lsock->af, &cli->lsock->addr6, (char *)&ip6, IPADDRMAXLEN);
+		inet_ntop(SockAF(cli->lsock), &cli->lsock->addr6, (char *)&ip6, IPADDRMAXLEN);
 
 		/* Get rDNS for IP, will decide what to use in case of no rDNS next */
 		if (!LstIsNoRDNS(cli->listener))
@@ -200,7 +200,7 @@ char* getwebircmsg(struct Client *cli) {
 	}
 	
 	/* Finalize host string appending suffix if required and rDNS was successful */
-	if (cli->listener->wircsuff && !LstIsNoSuffix(cli->listener) && !(rdnsdone && LstIsRDNSNoSuffix(cli->listener)))
+	if ((cli->listener->wircsuff[0] != 0) && !LstIsNoSuffix(cli->listener) && !(rdnsdone && LstIsRDNSNoSuffix(cli->listener)))
 		snprintf((char *)&host, HOSTMAXLEN, "%s.%s", hostpart, cli->listener->wircsuff);
 	else
 		strncpy((char *)&host, (char *)&hostpart, HOSTMAXLEN);
@@ -220,7 +220,7 @@ char* getwebircextramsg(struct Client *cli, char* type, char* data) {
 	assert(cli != NULL);
 	assert(cli->listener != NULL);
 
-	if (!cli->listener->wircpass || !LstIsWebIRC(cli->listener))
+	if ((cli->listener->wircpass[0] == 0) || !LstIsWebIRC(cli->listener))
 		return NULL;
 
 	if (!type || !data)
