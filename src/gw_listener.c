@@ -21,10 +21,25 @@
  */
 #include "gw_listener.h"
 
-struct Listener* listener_add(char *addr, int port) {
+struct Listener* listener_add(char *addr, char *port) {
 	struct Listener *new;
+	struct addrinfo *ai;
+	struct addrinfo aihints;
+	int r = 0;
 
-	new = listener_find(addr, port);
+	memset(&aihints, 0, sizeof(struct addrinfo));
+
+	aihints.ai_flags = 0;
+	aihints.ai_family = AF_UNSPEC;
+	aihints.ai_socktype = SOCK_STREAM;
+	aihints.ai_protocol = IPPROTO_TCP;
+
+	if ((r = getaddrinfo(addr, port, &aihints, &ai)) != 0) {
+		alog(LOG_ERROR, "Error: getaddrinfo() error: %s", gai_strerror(r));
+		return NULL;
+	}
+
+	new = listener_find((struct gw_sockaddr *)ai->ai_addr);
 
 	if (new != NULL) {
 		LstSetAdded(new);
@@ -32,24 +47,30 @@ struct Listener* listener_add(char *addr, int port) {
 	}
 
 	new = malloc(sizeof(struct Listener));
-	alog(LOG_DEBUG, "Lst: new()");
+	alog(LOG_DEBUG, "Lst: new(%s, %s)", addr, port);
 
 	new->sock = socket_new();
 
-	new->sock->af = AF_INET;
-	if (inet_pton(AF_INET, addr, &new->sock->addr) <= 0) {
-		new->sock->af = AF_INET6;
-		if (inet_pton(AF_INET6, addr, &new->sock->addr6) <= 0) {
-			socket_del(new->sock);
-			free(new);
-			return NULL;
-		}
+	memcpy(&new->sock->sa, ai->ai_addr, ai->ai_addrlen);
+	new->sock->salen = ai->ai_addrlen;
+	freeaddrinfo(ai);
+
+	new->sock->af = new->sock->sa.sa_family;
+	if (new->sock->af == AF_INET)
+		memcpy(&new->sock->addr, &new->sock->sa.sa_in.sa_inaddr, sizeof(struct gwin_addr));
+	else if (new->sock->af == AF_INET6)
+		memcpy(&new->sock->addr6, &new->sock->sa.sa_in6.sa_inaddr, sizeof(struct gwin6_addr));
+	else {
+		alog(LOG_ERROR, "Error: Unknown address family for listener: %d", new->sock->af);
+		socket_del(new->sock);
+		free(new);
+		return NULL;
 	}
 
 	new->flags = 0;
 	new->clients = 0;
 	LstSetAdded(new);
-	new->sock->port = port;
+	new->sock->port = atoi(port);
 	new->prev = NULL;
 	if (listeners != NULL)
 		listeners->prev = new;
@@ -84,15 +105,18 @@ int listener_del(struct Listener* l) {
 	return 1;
 }
 
-struct Listener* listener_find(char *addr, int port) {
+struct Listener* listener_find(struct gw_sockaddr *sa) {
 	struct Listener *l;
 	struct gwin6_addr ip;
 	int m = 0;
+	int port = ntohs(sa->sa_port);
+
+	if (sa->sa_family == AF_INET6)
+		memcpy(&ip, &sa->sa_in6.sa_inaddr, sizeof(struct gwin6_addr));
+	else
+		memcpy(&ip, &sa->sa_in.sa_inaddr, sizeof(struct gwin_addr));
 
 	for (l = listeners; l != NULL; l = l->next) {
-		if (inet_pton(l->sock->af, addr, &ip) <= 0)
-			continue;
-
 		if (port == l->sock->port)
 			m = 1;
 		if (IsIP6(l->sock)) {
@@ -155,25 +179,46 @@ int listener_clearadded(struct Listener *l) {
 	return 1;
 }
 
-int listener_setremhost(struct Listener *l, char *raddr) {
-	l->remaf = AF_INET;
-	if (inet_pton(AF_INET, raddr, &l->remaddr) <= 0) {
-		l->remaf = AF_INET6;
-		if (inet_pton(AF_INET6, raddr, &l->remaddr6) <= 0) {
-			return 0;
-		}
+int listener_setremhost(struct Listener *l, char *raddr, char *rport) {
+	struct Listener *new;
+	struct addrinfo *ai;
+	struct addrinfo aihints;
+	int r = 0;
+
+	memset(&aihints, 0, sizeof(struct addrinfo));
+
+	aihints.ai_flags = 0;
+	aihints.ai_family = AF_UNSPEC;
+	aihints.ai_socktype = SOCK_STREAM;
+	aihints.ai_protocol = IPPROTO_TCP;
+
+	if ((r = getaddrinfo(raddr, rport, &aihints, &ai)) != 0) {
+		alog(LOG_ERROR, "Error: getaddrinfo() error: %s", gai_strerror(r));
+		return 0;
 	}
+
+	memcpy(&l->remsa, ai->ai_addr, ai->ai_addrlen);
+	l->remsalen = ai->ai_addrlen;
+	freeaddrinfo(ai);
+
+	if ((l->remsa.sa_family != AF_INET) && (l->remsa.sa_family != AF_INET6)) {
+		alog(LOG_ERROR, "Error: Unknown address family for remote: %d", new->sock->af);
+		return 0;
+	}
+
 	return 1;
 }
 
 int listener_checkfd(struct Listener *l) {
 	int fd = l->sock->fd;
-	char *ip, *lip;
-	char result[IPADDRMAXLEN];
+	char ip[IPADDRMAXLEN], lip[IPADDRMAXLEN];
 	struct Client *cli;
 	struct sockaddr_in6 sa6;
 	struct sockaddr_in sa;
 	int size = 0;
+
+	memset(&ip, 0, IPADDRMAXLEN);
+	memset(&lip, 0, IPADDRMAXLEN);
 
 	if (FD_ISSET(fd, &fds)) {
 		cli = socket_accept(l);
@@ -184,36 +229,31 @@ int listener_checkfd(struct Listener *l) {
 		if (IsIP6(l->sock)) {
 			size = sizeof(struct sockaddr_in6);
 			getsockname(cli->lsock->fd, (struct sockaddr *)&sa6, (socklen_t*)&size);
-			/* ip = (char *)inet_ntop(l->sock->af, &l->sock->addr6, result, IPADDRMAXLEN); */
-			ip = (char *)inet_ntop(l->sock->af, &sa6.sin6_addr, result, IPADDRMAXLEN);
+			inet_ntop(l->sock->af, &sa6.sin6_addr, (char *)&ip, IPADDRMAXLEN);
 		} else {
 			size = sizeof(struct sockaddr_in);
 			getsockname(cli->lsock->fd, (struct sockaddr *)&sa, (socklen_t*)&size);
-			/* ip = (char *)inet_ntop(l->sock->af, &l->sock->addr, result, IPADDRMAXLEN); */
-			ip = (char *)inet_ntop(l->sock->af, &sa.sin_addr, result, IPADDRMAXLEN);
+			inet_ntop(l->sock->af, &sa.sin_addr, (char *)&ip, IPADDRMAXLEN);
 		}
-		lip = strdup(ip);
 
 		alog(LOG_DEBUG, "Incoming connection on [%s]:%d", lip, l->sock->port);
 
 		if (IsIP6(cli->lsock))
-			ip = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr6, result, IPADDRMAXLEN);
+			inet_ntop(cli->lsock->af, &cli->lsock->addr6, (char *)&lip, IPADDRMAXLEN);
 		else
-			ip = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr, result, IPADDRMAXLEN);
+			inet_ntop(cli->lsock->af, &cli->lsock->addr, (char *)&lip, IPADDRMAXLEN);
 
 		alog(LOG_NORM, "Accepted new client from [%s]:%d on [%s]:%d", ip, cli->lsock->port, lip, l->sock->port);
 
 		if (!socket_connect(cli))
 			return 0;
 
-		if (l->remaf == AF_INET6)
-			ip = (char *)inet_ntop(l->remaf, &l->remaddr6, result, IPADDRMAXLEN);
+		if (l->remsa.sa_family == AF_INET6)
+			inet_ntop(l->remsa.sa_family, &l->remsa.sa_in6.sa_inaddr, (char *)&ip, IPADDRMAXLEN);
 		else
-			ip = (char *)inet_ntop(l->remaf, &l->remaddr, result, IPADDRMAXLEN);
+			inet_ntop(l->remsa.sa_family, &l->remsa.sa_in.sa_inaddr, (char *)&ip, IPADDRMAXLEN);
 
-		alog(LOG_DEBUG, "Connected to remote host [%s]:%d", ip, l->remport);
-
-		free(lip);
+		alog(LOG_DEBUG, "Connected to remote host [%s]:%d", ip, ntohs(l->remsa.sa_port));
 
 		return 1;
 	}

@@ -115,8 +115,6 @@ void sockets_fdset() {
 }
 
 int socket_bind(struct Listener *l) {
-	struct sockaddr_in6 sa6;
-	struct sockaddr_in sa;
 	int optval = 1;
 	int bindRes = 0;
 
@@ -127,24 +125,10 @@ int socket_bind(struct Listener *l) {
 		return 0;
 
 	setsockopt(l->sock->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+	if (l->sock->sa.sa_family == AF_INET6)
+		setsockopt(l->sock->fd, IPPROTO_IPV6, IPV6_V6ONLY, &optval, sizeof(optval));
 
-	if (IsIP6(l->sock)) {
-		memset(&sa6, 0, sizeof(sa6));
-		sa6.sin6_family = l->sock->af;
-		sa6.sin6_port = htons(l->sock->port);
-		memcpy(&(sa6.sin6_addr), &l->sock->addr6, sizeof(l->sock->addr6));
-	} else {
-		memset(&sa, 0, sizeof(sa));
-		sa.sin_family = l->sock->af;
-		sa.sin_port = htons(l->sock->port);
-		memcpy(&(sa.sin_addr), &l->sock->addr, sizeof(l->sock->addr));
-		bzero(&(sa.sin_zero), 8);
-	}
-
-	if (IsIP6(l->sock))
-		bindRes = bind(l->sock->fd, (struct sockaddr *)&sa6, sizeof(struct sockaddr_in6));
-	else
-		bindRes = bind(l->sock->fd, (struct sockaddr *)&sa, sizeof(struct sockaddr_in));
+	bindRes = bind(l->sock->fd, (struct sockaddr *)&l->sock->sa, l->sock->salen);
 
 	if(bindRes != 0) {
 		close(l->sock->fd);
@@ -161,28 +145,14 @@ int socket_bind(struct Listener *l) {
 }
 
 int socket_connect(struct Client *c) {
-	struct sockaddr_in6 sa6;
-	struct sockaddr_in sa;
 	int res = 0;
 
-	if ((c->rsock->fd = socket(c->listener->remaf, SOCK_STREAM, 0)) < 0) {
+	if ((c->rsock->fd = socket(c->listener->remsa.sa_family, SOCK_STREAM, 0)) < 0) {
 		client_del(c);
 		return 0;
 	}
 
-	if (c->listener->remaf == AF_INET6) {
-		memset(&sa6, 0, sizeof(struct sockaddr_in6));
-		memcpy(&(sa6.sin6_addr), &c->listener->remaddr6, sizeof(c->listener->remaddr6));
-		sa6.sin6_family = c->listener->remaf;
-		sa6.sin6_port = htons(c->listener->remport);
-		res = connect(c->rsock->fd, (struct sockaddr*)&sa6, sizeof(sa6));
-	} else {
-		memset(&sa, 0, sizeof(struct sockaddr_in));
-		memcpy(&(sa.sin_addr), &c->listener->remaddr, sizeof(c->listener->remaddr));
-		sa.sin_family = c->listener->remaf;
-		sa.sin_port = htons(c->listener->remport);
-		res = connect(c->rsock->fd, (struct sockaddr*)&sa, sizeof(sa));
-	}
+	res = connect(c->rsock->fd, (struct sockaddr*)&c->listener->remsa, c->listener->remsalen);
 
 	if (res < 0) {
 		client_del(c);

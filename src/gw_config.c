@@ -29,8 +29,8 @@ void config_load() {
 	int bindc = 0;
 	int delc = 0;
 
-	char *lochost, *remhost, *wircpass, *wircsuff, *flags;
-	int locport, remport;
+	char *lochost, *locport, *remhost, *remport;
+	char *wircpass, *wircsuff, *flags;
 	char *opttype, *optval;
 
 	struct Listener *l;
@@ -52,9 +52,9 @@ void config_load() {
 				case 'P': {
 					strtok(line, CONF_SEP);
 					lochost = strtok(NULL, CONF_SEP);
-					locport = atoi(strtok(NULL, CONF_SEP));
+					locport = strtok(NULL, CONF_SEP);
 					remhost = strtok(NULL, CONF_SEP);
-					remport = atoi(strtok(NULL, CONF_SEP));
+					remport = strtok(NULL, CONF_SEP);
 					flags = strtok(NULL, CONF_SEP);
 					wircpass = strtok(NULL, CONF_SEP);
 					wircsuff = strtok(NULL, CONF_SEP);
@@ -70,11 +70,10 @@ void config_load() {
 						l->wircsuff = strdup(wircsuff);
 
 					listener_parseflags(l, flags);
-					if (!listener_setremhost(l, remhost)) {
+					if (!listener_setremhost(l, remhost, remport)) {
 						listener_del(l);
 						continue;
 					}
-					l->remport = remport;
 
 					if (LstIsClosed(l))
 						LstClrClosed(l);

@@ -75,11 +75,30 @@ struct gwin_addr {
 	} addr;
 };
 
+struct gw_sockaddr {
+	uint8_t sa_len;
+	uint8_t sa_family;
+	uint16_t sa_port;
+	union {
+		struct {
+			struct gwin_addr sa_inaddr;
+			uint8_t sa_pack[20];
+		} sa_in;
+		struct {
+			uint32_t sa_flowinfo;
+			struct gwin6_addr sa_inaddr;
+			uint32_t sa_scope_id;
+		} sa_in6;
+	};
+};
+
 struct Socket {
 	struct Socket *next;
 	struct Socket *prev;
+	struct gw_sockaddr sa;
 	struct gwin6_addr addr6;	/* IPv6 address */
 	struct gwin_addr addr;		/* IPv4 address */
+	socklen_t salen;
 	int port;			/* Local Port */
 	int af;				/* AF_INET or AF_INET6 */
 	int fd;				/* File descriptor */
@@ -91,10 +110,8 @@ struct Listener {
 	struct Listener *next;
 	struct Listener *prev;
 	struct Socket *sock;		/* Socket associated with Listener */
-	struct gwin6_addr remaddr6;	/* Remote IPv6 address */
-	struct gwin_addr remaddr;	/* Remote IPv4 address */
-	int remport;			/* Remote Port */
-	int remaf;			/* Remote: AF_INET or AF_INET6 */
+	struct gw_sockaddr remsa;
+	socklen_t remsalen;
 	int flags;			/* Listener flags (Added, Bound, Gagged) */
 	int clients;			/* Current client count */
 	char *wircpass;			/* WEBIRC Password */
