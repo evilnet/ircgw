@@ -24,9 +24,9 @@
 char* expandaddr6(struct gwin6_addr *a) {
 	static char ret[IPEXPMAXLEN];
 
-	snprintf((char *)&ret, IPEXPMAXLEN, "%08x%08x%08x%08x", htonl(a->addr.addr32[0]),
-		htonl(a->addr.addr32[1]), htonl(a->addr.addr32[2]),
-		htonl(a->addr.addr32[3]));
+	snprintf((char *)&ret, IPEXPMAXLEN, "%08x%08x%08x%08x", htonl(a->addr32[0]),
+		htonl(a->addr32[1]), htonl(a->addr32[2]),
+		htonl(a->addr32[3]));
 
 	return ret;
 }
@@ -35,10 +35,10 @@ char* expandaddr6colon(struct gwin6_addr *a) {
 	static char ret[IPEXPMAXLEN];
 
 	snprintf((char *)&ret, IPEXPMAXLEN, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
-		htons(a->addr.addr16[0]), htons(a->addr.addr16[1]),
-		htons(a->addr.addr16[2]), htons(a->addr.addr16[3]),
-		htons(a->addr.addr16[4]), htons(a->addr.addr16[5]),
-		htons(a->addr.addr16[6]), htons(a->addr.addr16[7]));
+		htons(a->addr16[0]), htons(a->addr16[1]),
+		htons(a->addr16[2]), htons(a->addr16[3]),
+		htons(a->addr16[4]), htons(a->addr16[5]),
+		htons(a->addr16[6]), htons(a->addr16[7]));
 
 	return (char *)&ret;
 }
@@ -94,6 +94,8 @@ char* get_rdns(struct gwin_addr ipaddr) {
 }
 
 char* getwebircmsg(struct Client *cli) {
+	struct gw_sockaddr sa4;
+	struct gwin_addr tmpip;
 	static char msg[IRCMSGMAXLEN];
 	char host[HOSTMAXLEN], hostpart[HOSTMAXLEN];
 	char ip[IPADDRMAXLEN], ip6[IPADDRMAXLEN];
@@ -105,6 +107,9 @@ char* getwebircmsg(struct Client *cli) {
 	assert(cli != NULL);
 	assert(cli->listener != NULL);
 	assert(cli->lsock != NULL);
+
+	memset(&tmpip, 0, sizeof(struct gwin_addr));
+	memset(&sa4, 0, sizeof(struct gw_sockaddr));
 
 	ip6[0] = 0;
 	ip[0] = 0;
@@ -118,11 +123,11 @@ char* getwebircmsg(struct Client *cli) {
 		/* Ipv6 client */
 
 		/* Get presentation format IPv6 IP */
-		inet_ntop(SockAF(cli->lsock), &cli->lsock->addr6, (char *)&ip6, IPADDRMAXLEN);
+		inet_ntop(SockAF(cli->lsock), &SockIn6(cli->lsock), (char *)&ip6, IPADDRMAXLEN);	
 
 		/* Get rDNS for IP, will decide what to use in case of no rDNS next */
 		if (!LstIsNoRDNS(cli->listener))
-			strncpy((char *)&hostpart, get_rdns6(cli->lsock->addr6), HOSTMAXLEN);
+			strncpy((char *)&hostpart, get_rdns6(SockIn6(cli->lsock)), HOSTMAXLEN);
 		if (hostpart[0] != 0)
 			rdnsdone = 1;
 
@@ -139,21 +144,21 @@ char* getwebircmsg(struct Client *cli) {
 			/* Generate hash 1 (first 64 bits of IPv6 IP) */
 			MD5_Init(&ctx1);
 			for (i=0; i<8; i++) {
-				MD5_Update(&ctx1, (unsigned const char*)&cli->lsock->addr6.addr.addr8[i], 1);
+				MD5_Update(&ctx1, (unsigned const char*)&SockIn6(cli->lsock).addr8[i], 1);
 			}
 			MD5_Final(hash1, &ctx1);
 
 			/* Generate hash 2 (next 32 bits of IPv6 IP) */
 			MD5_Init(&ctx2);
 			for (i=8; i<12; i++) {
-				MD5_Update(&ctx2, (unsigned const char*)&cli->lsock->addr6.addr.addr8[i], 1);
+				MD5_Update(&ctx2, (unsigned const char*)&SockIn6(cli->lsock).addr8[i], 1);
 			}
 			MD5_Final(hash2, &ctx2);
 
 			/* Generate hash 3 (last 32 bits of IPv6 IP) */
 			MD5_Init(&ctx3);
 			for (i=12; i<16; i++) {
-				MD5_Update(&ctx3, (unsigned const char*)&cli->lsock->addr6.addr.addr8[i], 1);
+				MD5_Update(&ctx3, (unsigned const char*)&SockIn6(cli->lsock).addr8[i], 1);
 			}
 			MD5_Final(hash3, &ctx3);
 			
@@ -163,9 +168,9 @@ char* getwebircmsg(struct Client *cli) {
 			/* If rDNS failed decide which form of literal IPv6 IP to use */
 			if (hostpart[0] == 0) {
 				if (LstIsLiteralIPv6(cli->listener))
-					strncpy((char *)&hostpart, expandaddr6colon(&cli->lsock->addr6), HOSTMAXLEN);
+					strncpy((char *)&hostpart, expandaddr6colon(&SockIn6(cli->lsock)), HOSTMAXLEN);
 				else {
-					strncpy((char *)&hostpart, expandaddr6(&cli->lsock->addr6), HOSTMAXLEN);
+					strncpy((char *)&hostpart, expandaddr6(&SockIn6(cli->lsock)), HOSTMAXLEN);
 					for (i=0; i<16; i++) {
 						temp = hostpart[i];
 						hostpart[i] = hostpart[j];
@@ -175,24 +180,26 @@ char* getwebircmsg(struct Client *cli) {
 			}
 		}
 	} else {
+		memcpy(&sa4, &cli->lsock->sa, sizeof(struct gw_sockaddr));
+
 		/* IPv4 client or IPv6 using 6to4 (2002::/16) or teredo (2001:0::/32) */
 		if (IsIP6to4(cli->lsock)) {
 			/* Prepare for 6to4 IP to allow conversion */
-			af = AF_INET;
-			cli->lsock->addr.addr.addr16[0] = cli->lsock->addr6.addr.addr16[1];
-			cli->lsock->addr.addr.addr16[1] = cli->lsock->addr6.addr.addr16[2];
+			sa4.sa_family = AF_INET;
+			sa4.sa_in.sa_inaddr.addr16[0] = cli->lsock->sa.sa_in6.sa_inaddr.addr16[1];
+			sa4.sa_in.sa_inaddr.addr16[1] = cli->lsock->sa.sa_in6.sa_inaddr.addr16[2];
 		} else if (IsIP6Teredo(cli->lsock)) {
 			/* Prepare for teredo IP to allow conversion */
-			af = AF_INET;
-			cli->lsock->addr.addr.addr32[0] = (cli->lsock->addr6.addr.addr32[3] ^ 0xFFFFFFFF);
+			sa4.sa_family = AF_INET;
+			sa4.sa_in.sa_inaddr.addr32[0] = (cli->lsock->sa.sa_in6.sa_inaddr.addr32[3] ^ 0xFFFFFFFF);
 		}
 
 		/* Get presentation format IPv4 IP */
-		inet_ntop(af, &cli->lsock->addr, (char *)&ip, IPADDRMAXLEN);
+		inet_ntop(sa4.sa_family, &sa4.sa_in.sa_inaddr, (char *)&ip, IPADDRMAXLEN);
 
 		/* Get rDNS for IP, if fails use presentation format IP as host */
 		if (!LstIsNoRDNS(cli->listener))
-			strncpy((char *)&hostpart, get_rdns(cli->lsock->addr), HOSTMAXLEN);
+			strncpy((char *)&hostpart, get_rdns(sa4.sa_in.sa_inaddr), HOSTMAXLEN);
 		if (hostpart[0] == 0)
 			strncpy((char *)&hostpart, (char *)&ip, HOSTMAXLEN);
 		else

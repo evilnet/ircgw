@@ -31,9 +31,6 @@ struct Socket* socket_new() {
 	new->fd = -1;
 	new->ssl = NULL;
 
-	memset(&(new->addr6), 0, 16);
-	memset(&(new->addr), 0, 4);
-
 	new->prev = NULL;
 	if (sockets != NULL)
 		sockets->prev = new;
@@ -194,20 +191,14 @@ int socket_close(struct Socket *s) {
 
 struct Client* socket_accept(struct Listener *l) {
 	struct Client *cli;
-	int size = 0;
 	char *h;
 
 	assert(l != NULL);
 
 	cli = client_new(l);
 
-	size = sizeof(struct gw_sockaddr);
-	cli->lsock->fd = accept(l->sock->fd, (struct sockaddr*)&cli->lsock->sa, (socklen_t*)&size);
-
-	if (IsIP6(cli->lsock))
-		memcpy(&(cli->lsock->addr6), &cli->lsock->sa.sa_in6.sa_inaddr, sizeof(struct gwin6_addr));
-	else
-		memcpy(&(cli->lsock->addr), &cli->lsock->sa.sa_in.sa_inaddr, sizeof(struct gwin_addr));
+	cli->lsock->salen = sizeof(struct gw_sockaddr);
+	cli->lsock->fd = accept(l->sock->fd, (struct sockaddr*)&cli->lsock->sa, (socklen_t*)&cli->lsock->salen);
 
 	if (LstIsClosed(l) || (cli->lsock->fd < 0)) {
 		client_del(cli);
@@ -225,7 +216,7 @@ struct Client* socket_accept(struct Listener *l) {
 	} else
 		cli->lsock->ssl = NULL;
 
-	alog(LOG_DEBUG, "New FD: %d (%d)", cli->lsock->fd, (int)sizeof(cli));
+	alog(LOG_DEBUG, "New FD: %d", cli->lsock->fd);
 
 	return cli;
 }

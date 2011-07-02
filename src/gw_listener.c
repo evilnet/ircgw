@@ -56,11 +56,7 @@ struct Listener* listener_add(char *addr, char *port) {
 	new->sock->salen = ai->ai_addrlen;
 	freeaddrinfo(ai);
 
-	if (SockAF(new->sock) == AF_INET)
-		memcpy(&new->sock->addr, &new->sock->sa.sa_in.sa_inaddr, sizeof(struct gwin_addr));
-	else if (SockAF(new->sock) == AF_INET6)
-		memcpy(&new->sock->addr6, &new->sock->sa.sa_in6.sa_inaddr, sizeof(struct gwin6_addr));
-	else {
+	if ((SockAF(new->sock) != AF_INET) && (SockAF(new->sock) != AF_INET6)) {
 		alog(LOG_ERROR, "Error: Unknown address family for listener: %d", SockAF(new->sock));
 		socket_del(new->sock);
 		free(new);
@@ -116,10 +112,10 @@ struct Listener* listener_find(struct gw_sockaddr *sa) {
 		if (port == SockPort(l->sock))
 			m = 1;
 		if (IsIP6(l->sock)) {
-			if (!(addrcmp(&l->sock->addr6, &ip, SockAF(l->sock))))
+			if (!(addrcmp(&SockIn6(l->sock), &ip, SockAF(l->sock))))
 				m = 0;
 		} else {
-			if (!(addrcmp((struct gwin6_addr *)&l->sock->addr, &ip, SockAF(l->sock))))
+			if (!(addrcmp((struct gwin6_addr *)&SockIn(l->sock), &ip, SockAF(l->sock))))
 				m = 0;
 		}
 
@@ -207,14 +203,18 @@ int listener_setremhost(struct Listener *l, char *raddr, char *rport) {
 
 int listener_checkfd(struct Listener *l) {
 	int fd = l->sock->fd;
-	char ip[IPADDRMAXLEN], lip[IPADDRMAXLEN];
+	char ip[IPADDRMAXLEN], sip[IPADDRMAXLEN], lip[IPADDRMAXLEN];
+	char port[PORTMAXLEN], sport[PORTMAXLEN], lport[PORTMAXLEN];
 	struct Client *cli;
-	struct sockaddr_in6 sa6;
-	struct sockaddr_in sa;
+	struct gw_sockaddr sa;
 	int size = 0;
 
 	memset(&ip, 0, IPADDRMAXLEN);
+	memset(&sip, 0, IPADDRMAXLEN);
 	memset(&lip, 0, IPADDRMAXLEN);
+	memset(&port, 0, PORTMAXLEN);
+	memset(&sport, 0, PORTMAXLEN);
+	memset(&lport, 0, PORTMAXLEN);
 
 	if (FD_ISSET(fd, &fds)) {
 		cli = socket_accept(l);
@@ -222,34 +222,27 @@ int listener_checkfd(struct Listener *l) {
 		if (cli == NULL)
 			return 0;
 
-		if (IsIP6(l->sock)) {
-			size = sizeof(struct sockaddr_in6);
-			getsockname(cli->lsock->fd, (struct sockaddr *)&sa6, (socklen_t*)&size);
-			inet_ntop(SockAF(l->sock), &sa6.sin6_addr, (char *)&lip, IPADDRMAXLEN);
-		} else {
-			size = sizeof(struct sockaddr_in);
-			getsockname(cli->lsock->fd, (struct sockaddr *)&sa, (socklen_t*)&size);
-			inet_ntop(SockAF(l->sock), &sa.sin_addr, (char *)&lip, IPADDRMAXLEN);
-		}
+		getnameinfo((struct sockaddr *)&l->sock->sa, l->sock->salen, (char *)&lip, IPADDRMAXLEN,
+			(char *)&lport, PORTMAXLEN, NI_NUMERICHOST | NI_NUMERICSERV);
+		
+		size = sizeof(struct gw_sockaddr);
+		getsockname(cli->lsock->fd, (struct sockaddr *)&sa, (socklen_t*)&size);
 
-		alog(LOG_DEBUG, "Incoming connection on [%s]:%d", lip, SockPort(l->sock));
+		getnameinfo((struct sockaddr *)&sa, size, (char *)&sip, IPADDRMAXLEN,
+			(char *)&sport, PORTMAXLEN, NI_NUMERICHOST | NI_NUMERICSERV);
 
-		if (IsIP6(cli->lsock))
-			inet_ntop(SockAF(cli->lsock), &cli->lsock->addr6, (char *)&ip, IPADDRMAXLEN);
-		else
-			inet_ntop(SockAF(cli->lsock), &cli->lsock->addr, (char *)&ip, IPADDRMAXLEN);
+		getnameinfo((struct sockaddr *)&cli->lsock->sa, cli->lsock->salen,
+			(char *)&ip, IPADDRMAXLEN, (char *)&port, PORTMAXLEN, NI_NUMERICHOST | NI_NUMERICSERV);
 
-		alog(LOG_NORM, "Accepted new client from [%s]:%d on [%s]:%d", ip, SockPort(cli->lsock), lip, SockPort(l->sock));
+		alog(LOG_NORM, "Accepted new client from [%s]:%s to [%s]:%s on [%s]:%s", ip, port, sip, sport, lip, lport);
 
 		if (!socket_connect(cli))
 			return 0;
 
-		if (l->remsa.sa_family == AF_INET6)
-			inet_ntop(l->remsa.sa_family, &l->remsa.sa_in6.sa_inaddr, (char *)&ip, IPADDRMAXLEN);
-		else
-			inet_ntop(l->remsa.sa_family, &l->remsa.sa_in.sa_inaddr, (char *)&ip, IPADDRMAXLEN);
+		getnameinfo((struct sockaddr *)&l->remsa, l->remsalen, (char *)&ip, IPADDRMAXLEN,
+			(char *)&port, PORTMAXLEN, NI_NUMERICHOST | NI_NUMERICSERV);
 
-		alog(LOG_DEBUG, "Connected to remote host [%s]:%d", ip, ntohs(l->remsa.sa_port));
+		alog(LOG_DEBUG, "Connected to remote host [%s]:%s", ip, port);
 
 		return 1;
 	}

@@ -85,16 +85,14 @@ int main(int argc, char *argv[]) {
 }
 
 int print_listener (struct Listener* l) {
-	char *ip;
-	char result[IPADDRMAXLEN];
-	char *flags = listener_flags(l);
+	char ip[IPADDRMAXLEN];
+	int r = 0;
 
-	if (IsIP6(l->sock)) {
-		ip = (char *)inet_ntop(SockAF(l->sock), &l->sock->addr6, result, IPADDRMAXLEN);
-	} else
-		ip = (char *)inet_ntop(SockAF(l->sock), &l->sock->addr, result, IPADDRMAXLEN);
-
-	alog(LOG_NORM, "Listener: [%s]:%d (Flags: %s)", ip, SockPort(l->sock), flags);
+	if ((r = getnameinfo((struct sockaddr *)&l->sock->sa, l->sock->salen, (char *)&ip, IPADDRMAXLEN,
+				NULL, 0, NI_NUMERICHOST | NI_NUMERICSERV)) != 0)
+		alog(LOG_ERROR, "getnaminfo() error: %s", gai_strerror(r));
+	else
+		alog(LOG_NORM, "Listener: [%s]:%d (Flags: %s)", ip, SockPort(l->sock), listener_flags(l));
 
 	return 0;
 }

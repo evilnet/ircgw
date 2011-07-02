@@ -45,6 +45,7 @@
 #define DEFPID	"ircgw.pid"
 
 #define IPADDRMAXLEN	INET6_ADDRSTRLEN
+#define PORTMAXLEN	NI_MAXSERV
 #define IPEXPMAXLEN	33
 #define HOSTMAXLEN	256
 #define IRCMSGMAXLEN	512
@@ -55,19 +56,21 @@
 #define SetFlag(o, flag)	o->flags |= flag
 #define ClrFlag(o, flag)	o->flags &= ~flag
 
-#define SockAF(s)		(s->sa.sa_family)
-#define SockPort(s)		(ntohs(s->sa.sa_port))
+#define SockAF(s)		s->sa.sa_family
+#define SockPort(s)		ntohs(s->sa.sa_port)
+#define SockIn(s)		s->sa.sa_in.sa_inaddr
+#define SockIn6(s)		s->sa.sa_in6.sa_inaddr
 
-#define IsIP6(o)		((SockAF(o) == AF_INET6) ? 1 : 0)
-#define IsIP6to4(o)		((o->addr6.addr.addr16[0] == htons(0x2002)) ? 1 : 0)
-#define IsIP6Teredo(o)		((o->addr6.addr.addr16[0] == htons(0x2001)) && (o->addr6.addr.addr16[1] == 0) ? 1 : 0)
+#define IsIP6(s)		((SockAF(s) == AF_INET6) ? 1 : 0)
+#define IsIP6to4(s)		(IsIP6(s) && (SockIn6(s).addr16[0] == htons(0x2002)) ? 1 : 0)
+#define IsIP6Teredo(s)		(IsIP6(s) && (SockIn6(s).addr16[0] == htons(0x2001)) && (SockIn6(s).addr16[1] == 0) ? 1 : 0)
 
 struct gwin6_addr {
 	union {
 		uint8_t		addr8[16];
 		uint16_t	addr16[8];
 		uint32_t	addr32[4];
-	} addr;
+	};
 };
 
 struct gwin_addr {
@@ -75,7 +78,7 @@ struct gwin_addr {
 		uint8_t		addr8[4];
 		uint16_t	addr16[2];
 		uint32_t	addr32[1];
-	} addr;
+	};
 };
 
 struct gw_sockaddr {
@@ -99,8 +102,6 @@ struct Socket {
 	struct Socket *next;
 	struct Socket *prev;
 	struct gw_sockaddr sa;		/* Socket address of this socket */
-	struct gwin6_addr addr6;	/* IPv6 address */
-	struct gwin_addr addr;		/* IPv4 address */
 	socklen_t salen;		/* Size of socket address struct */
 	int fd;				/* File descriptor */
 	SSL *ssl;			/* SSL connection */
