@@ -43,6 +43,8 @@ $ipstr = inet_ntop($ip);
 
 if ((ord($ip[0]) == 0x20) and (ord($ip[1]) == 0x02)) {
 	$ipout = sprintf("%d.%d.%d.%d", ord($ip[2]), ord($ip[3]), ord($ip[4]), ord($ip[5]));
+} elseif ((ord($ip[0]) == 0x20) and (ord($ip[1]) == 0x01) and (ord($ip[2]) == 0x00) and (ord($ip[3]) == 0x00)) {
+	$ipout = sprintf("%d.%d.%d.%d", (ord($ip[12]) ^ 0xFF), (ord($ip[13]) ^ 0xFF), (ord($ip[14]) ^ 0xFF), (ord($ip[15]) ^ 0xFF));
 } else {
 	$h1 = hash_init("md5");
 	$h2 = hash_init("md5");
