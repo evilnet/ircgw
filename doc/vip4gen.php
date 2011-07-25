@@ -4,7 +4,7 @@
  * virtual IPv4 IP address from an IPv6 IP address.
  *
  * Description:
- * =======
+ * ==========
  * First we check to see if the IPv6 IP is in the subnet 2002::/16, if it
  * is then we take the 3rd, 4th, 5th and 6th bytes and use those as the a
  * real IPv4 IP.
