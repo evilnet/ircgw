@@ -31,8 +31,8 @@ struct Socket* socket_new() {
 	new->ssl = NULL;
 
 	memset(&(new->sslfp), 0, 65);
-	memset(&(new->addr6), 0, 16);
-	memset(&(new->addr), 0, 4);
+	memset(&(SockIn6(new)), 0, 16);
+	memset(&(SockIn(new)), 0, 4);
 
 	new->prev = NULL;
 	if (sockets != NULL)
@@ -117,7 +117,7 @@ int socket_bind(struct Listener *l) {
 	int optval = 1;
 	int bindRes = 0;
 
-	if ((l->sock->fd = socket(l->sock->af, SOCK_STREAM, 0)) == -1)
+	if ((l->sock->fd = socket(SockAF(l->sock), SOCK_STREAM, 0)) == -1)
 		return 0;
 
 	if (LstIsBound(l))
@@ -127,13 +127,13 @@ int socket_bind(struct Listener *l) {
 
 	if (IsIP6(l->sock)) {
 		memset(&sa6, 0, sizeof(sa6));
-		sa6.sin6_family = l->sock->af;
-		sa6.sin6_port = htons(l->sock->port);
+		sa6.sin6_family = SockAF(l->sock);
+		sa6.sin6_port = htons(SockPort(l->sock));
 		memcpy(&(sa6.sin6_addr), &SockIn6(l->sock), sizeof(SockIn6(l->sock)));
 	} else {
 		memset(&sa, 0, sizeof(sa));
-		sa.sin_family = l->sock->af;
-		sa.sin_port = htons(l->sock->port);
+		sa.sin_family = SockAF(l->sock);
+		sa.sin_port = htons(SockPort(l->sock));
 		memcpy(&(sa.sin_addr), &SockIn(l->sock), sizeof(SockIn(l->sock)));
 		bzero(&(sa.sin_zero), 8);
 	}
@@ -236,15 +236,15 @@ struct Client* socket_accept(struct Listener *l) {
 	if (IsIP6(l->sock)) {
 		size = sizeof(struct sockaddr_in6);
 		cli->lsock->fd = accept(l->sock->fd, (struct sockaddr*)&sa6, (socklen_t*)&size);
-		memcpy(&(cli->lsock->addr6), &sa6.sin6_addr, sizeof(struct gwin6_addr));
-		cli->lsock->port = ntohs(sa6.sin6_port);
-		cli->lsock->af = sa6.sin6_family;
+		memcpy(&(SockIn6(cli->lsock)), &sa6.sin6_addr, sizeof(struct gwin6_addr));
+		SockPort(cli->lsock) = ntohs(sa6.sin6_port);
+		SockAF(cli->lsock) = sa6.sin6_family;
 	} else {
 		size = sizeof(struct sockaddr_in);
 		cli->lsock->fd = accept(l->sock->fd, (struct sockaddr*)&sa, (socklen_t*)&size);
-		memcpy(&(cli->lsock->addr), &sa.sin_addr, sizeof(struct gwin_addr));
-		cli->lsock->port = ntohs(sa.sin_port);
-		cli->lsock->af = sa.sin_family;
+		memcpy(&(SockIn(cli->lsock)), &sa.sin_addr, sizeof(struct gwin_addr));
+		SockPort(cli->lsock) = ntohs(sa.sin_port);
+		SockAF(cli->lsock) = sa.sin_family;
 	}
 
 	if (LstIsClosed(l) || (cli->lsock->fd < 0)) {

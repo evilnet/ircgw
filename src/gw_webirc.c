@@ -108,7 +108,7 @@ char* getwebircmsg(struct Client *cli) {
 
 	ip6[0] = 0;
 	ip[0] = 0;
-	af = cli->lsock->af;
+	af = SockAF(cli->lsock);
 
 	/* Make sure we actually need to run through this process */
 	if (!cli->listener->wircpass || !LstIsWebIRC(cli->listener))
@@ -179,16 +179,16 @@ char* getwebircmsg(struct Client *cli) {
 		if (IsIP6to4(cli->lsock)) {
 			/* Prepare for 6to4 IP to allow conversion */
 			af = AF_INET;
-			cli->lsock->addr.addr16[0] = cli->lsock->addr6.addr16[1];
-			cli->lsock->addr.addr16[1] = cli->lsock->addr6.addr16[2];
+			SockIn(cli->lsock).addr16[0] = SockIn6(cli->lsock).addr16[1];
+			SockIn(cli->lsock).addr16[1] = SockIn6(cli->lsock).addr16[2];
 		} else if (IsIP6Teredo(cli->lsock)) {
 			/* Prepare for teredo IP to allow conversion */
 			af = AF_INET;
-			cli->lsock->addr.addr32[0] = (cli->lsock->addr6.addr32[3] ^ 0xFFFFFFFF);
+			SockIn(cli->lsock).addr32[0] = (SockIn6(cli->lsock).addr32[3] ^ 0xFFFFFFFF);
 		}
 
 		/* Get presentation format IPv4 IP */
-		inet_ntop(af, &cli->lsock->addr, (char *)&ip, IPADDRMAXLEN);
+		inet_ntop(af, &SockIn(cli->lsock), (char *)&ip, IPADDRMAXLEN);
 
 		/* Get rDNS for IP, if fails use presentation format IP as host */
 		if (!LstIsNoRDNS(cli->listener))

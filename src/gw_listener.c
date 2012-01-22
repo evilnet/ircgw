@@ -38,9 +38,9 @@ struct Listener* listener_add(char *addr, int port) {
 	new->sock = socket_new();
 
 	SockAF(new->sock) = AF_INET;
-	if (inet_pton(AF_INET, addr, &new->sock->addr) <= 0) {
+	if (inet_pton(AF_INET, addr, &SockIn(new->sock)) <= 0) {
 		SockAF(new->sock) = AF_INET6;
-		if (inet_pton(AF_INET6, addr, &new->sock->addr6) <= 0) {
+		if (inet_pton(AF_INET6, addr, &SockIn6(new->sock)) <= 0) {
 			socket_del(new->sock);
 			free(new);
 			return NULL;
@@ -50,7 +50,7 @@ struct Listener* listener_add(char *addr, int port) {
 	new->flags = 0;
 	new->clients = 0;
 	LstSetAdded(new);
-	new->sock->port = port;
+	SockPort(new->sock) = port;
 	new->prev = NULL;
 	if (listeners != NULL)
 		listeners->prev = new;
@@ -182,22 +182,20 @@ int listener_checkfd(struct Listener *l) {
 		if (IsIP6(l->sock)) {
 			size = sizeof(struct sockaddr_in6);
 			getsockname(cli->lsock->fd, (struct sockaddr *)&sa6, (socklen_t*)&size);
-			/* ip = (char *)inet_ntop(l->sock->af, &l->sock->addr6, result, IPADDRMAXLEN); */
-			ip = (char *)inet_ntop(l->sock->af, &sa6.sin6_addr, result, IPADDRMAXLEN);
+			ip = (char *)inet_ntop(SockAF(l->sock), &sa6.sin6_addr, result, IPADDRMAXLEN);
 		} else {
 			size = sizeof(struct sockaddr_in);
 			getsockname(cli->lsock->fd, (struct sockaddr *)&sa, (socklen_t*)&size);
-			/* ip = (char *)inet_ntop(l->sock->af, &l->sock->addr, result, IPADDRMAXLEN); */
-			ip = (char *)inet_ntop(l->sock->af, &sa.sin_addr, result, IPADDRMAXLEN);
+			ip = (char *)inet_ntop(SockAF(l->sock), &sa.sin_addr, result, IPADDRMAXLEN);
 		}
 		lip = strdup(ip);
 
-		alog(LOG_DEBUG, "Incoming connection on [%s]:%d", lip, l->sock->port);
+		alog(LOG_DEBUG, "Incoming connection on [%s]:%d", lip, SockPort(l->sock));
 
 		if (IsIP6(cli->lsock))
-			ip = (char *)inet_ntop(cli->lsock->af, &SockIn6(cli->lsock), result, IPADDRMAXLEN);
+			ip = (char *)inet_ntop(SockAF(cli->lsock), &SockIn6(cli->lsock), result, IPADDRMAXLEN);
 		else
-			ip = (char *)inet_ntop(cli->lsock->af, &SockIn(cli->lsock), result, IPADDRMAXLEN);
+			ip = (char *)inet_ntop(SockAF(cli->lsock), &SockIn(cli->lsock), result, IPADDRMAXLEN);
 
 		alog(LOG_NORM, "Accepted new client from [%s]:%d on [%s]:%d", ip, SockPort(cli->lsock), lip, SockPort(l->sock));
 
