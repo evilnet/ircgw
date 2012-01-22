@@ -45,7 +45,6 @@
 #define DEFPID	"ircgw.pid"
 
 #define IPADDRMAXLEN	INET6_ADDRSTRLEN
-#define PORTMAXLEN	NI_MAXSERV
 #define IPEXPMAXLEN	33
 #define HOSTMAXLEN	256
 #define IRCMSGMAXLEN	512
@@ -56,21 +55,16 @@
 #define SetFlag(o, flag)	o->flags |= flag
 #define ClrFlag(o, flag)	o->flags &= ~flag
 
-#define SockAF(s)		s->sa.sa_family
-#define SockPort(s)		ntohs(s->sa.sa_port)
-#define SockIn(s)		s->sa.sa_in.sa_inaddr
-#define SockIn6(s)		s->sa.sa_in6.sa_inaddr
-
-#define IsIP6(s)		((SockAF(s) == AF_INET6) ? 1 : 0)
-#define IsIP6to4(s)		(IsIP6(s) && (SockIn6(s).addr16[0] == htons(0x2002)) ? 1 : 0)
-#define IsIP6Teredo(s)		(IsIP6(s) && (SockIn6(s).addr16[0] == htons(0x2001)) && (SockIn6(s).addr16[1] == 0) ? 1 : 0)
+#define IsIP6(o)		((o->af == AF_INET6) ? 1 : 0)
+#define IsIP6to4(o)		((o->addr6.addr.addr16[0] == htons(0x2002)) ? 1 : 0)
+#define IsIP6Teredo(o)		((o->addr6.addr.addr16[0] == htons(0x2001)) && (o->addr6.addr.addr16[1] == 0) ? 1 : 0)
 
 struct gwin6_addr {
 	union {
 		uint8_t		addr8[16];
 		uint16_t	addr16[8];
 		uint32_t	addr32[4];
-	};
+	} addr;
 };
 
 struct gwin_addr {
@@ -78,46 +72,33 @@ struct gwin_addr {
 		uint8_t		addr8[4];
 		uint16_t	addr16[2];
 		uint32_t	addr32[1];
-	};
-};
-
-struct gw_sockaddr {
-	uint8_t sa_len;
-	uint8_t sa_family;
-	uint16_t sa_port;
-	union {
-		struct {
-			struct gwin_addr sa_inaddr;
-			uint8_t sa_pack[20];
-		} sa_in;
-		struct {
-			uint32_t sa_flowinfo;
-			struct gwin6_addr sa_inaddr;
-			uint32_t sa_scope_id;
-		} sa_in6;
-	};
+	} addr;
 };
 
 struct Socket {
 	struct Socket *next;
 	struct Socket *prev;
-	struct gw_sockaddr sa;		/* Socket address of this socket */
-	socklen_t salen;		/* Size of socket address struct */
+	struct gwin6_addr addr6;	/* IPv6 address */
+	struct gwin_addr addr;		/* IPv4 address */
+	int port;			/* Local Port */
+	int af;				/* AF_INET or AF_INET6 */
 	int fd;				/* File descriptor */
 	SSL *ssl;			/* SSL connection */
-	char sslfp[65];			/* SSL fingerprint */
+	char *sslfp;			/* SSL fingerprint */
 };
 
 struct Listener {
 	struct Listener *next;
 	struct Listener *prev;
 	struct Socket *sock;		/* Socket associated with Listener */
-	struct gw_sockaddr remsa;	/* Remote socket address (to connect to) */
-	socklen_t remsalen;		/* Size of remote socket address struct */
+	struct gwin6_addr remaddr6;	/* Remote IPv6 address */
+	struct gwin_addr remaddr;	/* Remote IPv4 address */
+	int remport;			/* Remote Port */
+	int remaf;			/* Remote: AF_INET or AF_INET6 */
 	int flags;			/* Listener flags (Added, Bound, Gagged) */
 	int clients;			/* Current client count */
-	char wircpass[255];		/* WEBIRC Password */
-	char wircsuff[255];		/* WEBIRC Host Suffix */
+	char *wircpass;			/* WEBIRC Password */
+	char *wircsuff;			/* WEBIRC Host Suffix */
 };
 
 struct Client {

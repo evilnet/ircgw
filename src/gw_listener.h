@@ -79,16 +79,16 @@ struct Listener *listeners;
 
 typedef int (*ListenerLoopHandler)(struct Listener* listener);
 
-struct Listener* listener_add(char *addr, char *port);
+struct Listener* listener_add (char *addr, int port);
 int listener_del(struct Listener* l);
-struct Listener* listener_find(struct gw_sockaddr *sa);
-int listener_loop(ListenerLoopHandler handler);
+struct Listener* listener_find (char *addr, int port);
+int listener_loop (ListenerLoopHandler handler);
 int listener_rebind(struct Listener *l);
 int listener_delnoconf(struct Listener *l);
 int listener_delnobound(struct Listener *l);
 int listener_clearadded(struct Listener *l);
 int listener_checkfd(struct Listener *l);
-int listener_setremhost(struct Listener *l, char *raddr, char *rport);
+int listener_setremhost(struct Listener *l, char *raddr);
 void listener_parseflags(struct Listener *l, char *flags);
 char* listener_flags(struct Listener *l);
 
