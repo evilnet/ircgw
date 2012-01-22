@@ -28,7 +28,7 @@ int addrcmp(struct gwin6_addr *a, struct gwin6_addr *b, int af) {
 	for (i=0; i<4; i++) {
 		if ((af == AF_INET) && (i > 0))
 			break;
-		if (a->addr.addr32[i] != b->addr.addr32[i]) {
+		if (a->addr32[i] != b->addr32[i]) {
 			match = 0;
 		}
 	}

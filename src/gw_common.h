@@ -55,16 +55,21 @@
 #define SetFlag(o, flag)	o->flags |= flag
 #define ClrFlag(o, flag)	o->flags &= ~flag
 
-#define IsIP6(o)		((o->af == AF_INET6) ? 1 : 0)
-#define IsIP6to4(o)		((o->addr6.addr.addr16[0] == htons(0x2002)) ? 1 : 0)
-#define IsIP6Teredo(o)		((o->addr6.addr.addr16[0] == htons(0x2001)) && (o->addr6.addr.addr16[1] == 0) ? 1 : 0)
+#define SockAF(s)		s->af
+#define SockPort(s)		s->port
+#define SockIn(s)		s->addr
+#define SockIn6(s)		s->addr6
+
+#define IsIP6(s)		((SockAF(s) == AF_INET6) ? 1 : 0)
+#define IsIP6to4(s)		(IsIP6(s) && (SockIn6(s).addr16[0] == htons(0x2002)) ? 1 : 0)
+#define IsIP6Teredo(s)		(IsIP6(s) && (SockIn6(s).addr16[0] == htons(0x2001)) && (SockIn6(s).addr16[1] == 0) ? 1 : 0)
 
 struct gwin6_addr {
 	union {
 		uint8_t		addr8[16];
 		uint16_t	addr16[8];
 		uint32_t	addr32[4];
-	} addr;
+	};
 };
 
 struct gwin_addr {
@@ -72,7 +77,7 @@ struct gwin_addr {
 		uint8_t		addr8[4];
 		uint16_t	addr16[2];
 		uint32_t	addr32[1];
-	} addr;
+	};
 };
 
 struct Socket {
@@ -84,7 +89,7 @@ struct Socket {
 	int af;				/* AF_INET or AF_INET6 */
 	int fd;				/* File descriptor */
 	SSL *ssl;			/* SSL connection */
-	char *sslfp;			/* SSL fingerprint */
+	char sslfp[65];			/* SSL fingerprint */
 };
 
 struct Listener {
@@ -97,8 +102,8 @@ struct Listener {
 	int remaf;			/* Remote: AF_INET or AF_INET6 */
 	int flags;			/* Listener flags (Added, Bound, Gagged) */
 	int clients;			/* Current client count */
-	char *wircpass;			/* WEBIRC Password */
-	char *wircsuff;			/* WEBIRC Host Suffix */
+	char wircpass[255];		/* WEBIRC Password */
+	char wircsuff[255];		/* WEBIRC Host Suffix */
 };
 
 struct Client {

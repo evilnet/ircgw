@@ -32,13 +32,14 @@ struct Listener* listener_add(char *addr, int port) {
 	}
 
 	new = malloc(sizeof(struct Listener));
+	memset(new, 0, sizeof(struct Listener));
 	alog(LOG_DEBUG, "Lst: new()");
 
 	new->sock = socket_new();
 
-	new->sock->af = AF_INET;
+	SockAF(new->sock) = AF_INET;
 	if (inet_pton(AF_INET, addr, &new->sock->addr) <= 0) {
-		new->sock->af = AF_INET6;
+		SockAF(new->sock) = AF_INET6;
 		if (inet_pton(AF_INET6, addr, &new->sock->addr6) <= 0) {
 			socket_del(new->sock);
 			free(new);
@@ -69,9 +70,6 @@ int listener_del(struct Listener* l) {
 
 	socket_close_listener(l);
 
-	free(l->wircpass);
-	free(l->wircsuff);
-
 	if (l->next != NULL)
 		l->next->prev = l->prev;
 	if (l->prev == NULL)
@@ -90,16 +88,16 @@ struct Listener* listener_find(char *addr, int port) {
 	int m = 0;
 
 	for (l = listeners; l != NULL; l = l->next) {
-		if (inet_pton(l->sock->af, addr, &ip) <= 0)
+		if (inet_pton(SockAF(l->sock), addr, &ip) <= 0)
 			continue;
 
-		if (port == l->sock->port)
+		if (port == SockPort(l->sock))
 			m = 1;
 		if (IsIP6(l->sock)) {
-			if (!(addrcmp(&l->sock->addr6, &ip, l->sock->af)))
+			if (!(addrcmp(&SockIn6(l->sock), &ip, SockAF(l->sock))))
 				m = 0;
 		} else {
-			if (!(addrcmp((struct gwin6_addr *)&l->sock->addr, &ip, l->sock->af)))
+			if (!(addrcmp((struct gwin6_addr *)&SockIn(l->sock), &ip, SockAF(l->sock))))
 				m = 0;
 		}
 
@@ -197,11 +195,11 @@ int listener_checkfd(struct Listener *l) {
 		alog(LOG_DEBUG, "Incoming connection on [%s]:%d", lip, l->sock->port);
 
 		if (IsIP6(cli->lsock))
-			ip = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr6, result, IPADDRMAXLEN);
+			ip = (char *)inet_ntop(cli->lsock->af, &SockIn6(cli->lsock), result, IPADDRMAXLEN);
 		else
-			ip = (char *)inet_ntop(cli->lsock->af, &cli->lsock->addr, result, IPADDRMAXLEN);
+			ip = (char *)inet_ntop(cli->lsock->af, &SockIn(cli->lsock), result, IPADDRMAXLEN);
 
-		alog(LOG_NORM, "Accepted new client from [%s]:%d on [%s]:%d", ip, cli->lsock->port, lip, l->sock->port);
+		alog(LOG_NORM, "Accepted new client from [%s]:%d on [%s]:%d", ip, SockPort(cli->lsock), lip, SockPort(l->sock));
 
 		if (!socket_connect(cli))
 			return 0;
@@ -275,26 +273,29 @@ void listener_parseflags(struct Listener *l, char *flags) {
 }
 
 char* listener_flags(struct Listener *l) {
-	char *flags = strdup("--------");
+	static char flags[9];
+	char *f = (char *)&flags;
+
+	memset(&flags, 0, 9);
 
 	if (LstIsNoSuffix(l))
-		flags[0] = 'H';
+		*f++ = 'H';
 	if (LstIsLiteralIPv6(l))
-		flags[1] = 'L';
+		*f++ = 'L';
 	if (LstIsRDNSNoSuffix(l))
-		flags[2] = 'N';
+		*f++ = 'N';
 	if (LstIsNoRDNS(l))
-		flags[3] = 'R';
+		*f++ = 'R';
 	if (LstIsSSL(l))
-		flags[4] = 'S';
+		*f++ = 'S';
 	if (LstIsWebIRC(l))
-		flags[5] = 'W';
+		*f++ = 'W';
 	if (LstIsWebIRCv6(l))
-		flags[6] = '6';
+		*f++ = '6';
 	if (LstIsWebIRCExtra(l))
-		flags[7] = 'X';
-	flags[8] = '\0';
+		*f++ = 'X';
+	*f = '\0';
 
-	return flags;
+	return (char *)&flags;
 }
 

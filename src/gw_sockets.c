@@ -29,8 +29,8 @@ struct Socket* socket_new() {
 
 	new->fd = -1;
 	new->ssl = NULL;
-	new->sslfp = NULL;
 
+	memset(&(new->sslfp), 0, 65);
 	memset(&(new->addr6), 0, 16);
 	memset(&(new->addr), 0, 4);
 
@@ -52,9 +52,6 @@ int socket_del(struct Socket *s) {
 		sockets = s->next;
 	else
 		s->prev->next = s->next;
-
-	if (s->sslfp)
-		free(s->sslfp);
 
 	alog(LOG_DEBUG, "Sck free()");
 	free(s);
@@ -132,12 +129,12 @@ int socket_bind(struct Listener *l) {
 		memset(&sa6, 0, sizeof(sa6));
 		sa6.sin6_family = l->sock->af;
 		sa6.sin6_port = htons(l->sock->port);
-		memcpy(&(sa6.sin6_addr), &l->sock->addr6, sizeof(l->sock->addr6));
+		memcpy(&(sa6.sin6_addr), &SockIn6(l->sock), sizeof(SockIn6(l->sock)));
 	} else {
 		memset(&sa, 0, sizeof(sa));
 		sa.sin_family = l->sock->af;
 		sa.sin_port = htons(l->sock->port);
-		memcpy(&(sa.sin_addr), &l->sock->addr, sizeof(l->sock->addr));
+		memcpy(&(sa.sin_addr), &SockIn(l->sock), sizeof(SockIn(l->sock)));
 		bzero(&(sa.sin_zero), 8);
 	}
 
@@ -260,7 +257,7 @@ struct Client* socket_accept(struct Listener *l) {
 		if (cli->lsock->ssl) {
 			if ((h = gw_ssl_get_hash(cli->lsock->ssl))) {
 				alog(LOG_DEBUG, "Client certificate SHA256: %s", gw_strhex(h, 32));
-				cli->lsock->sslfp = strdup(gw_strhex(h, 32));
+				strncpy((char *)&cli->lsock->sslfp, gw_strhex(h, 32), 65);
 			}
 		}
 	} else

@@ -96,8 +96,6 @@ int print_listener (struct Listener* l) {
 
 	alog(LOG_NORM, "Listener: [%s]:%d (Flags: %s)", ip, l->sock->port, flags);
 
-	free(flags);
-
 	return 0;
 }
 
