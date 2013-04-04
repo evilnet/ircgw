@@ -49,7 +49,7 @@ int gw_ssl_verify(int preverify_ok, X509_STORE_CTX *cert) {
 }
 
 void gw_ssl_init() {
-	SSL_METHOD *meth;
+	const SSL_METHOD *meth;
 
 	sslenabled = 1;
 
